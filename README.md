@@ -76,5 +76,7 @@ This is an alpha-stage project — expect bugs, sharp edges, and lots of potenti
 
 👤 Author
 Candra Alpin Gunawan
+
 📧 hinamatsuriairin@gmail.com
+
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
