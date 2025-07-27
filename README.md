@@ -1,5 +1,17 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
+update Version (0.1.4):
+    - gradient shape bug fixed LayerNormalization 
+    - gradient shape bug fixed BatchNormalization
+    - return None bug fixed MeanSquared Error 
+    - optimized Dense Layers  
+    - gradient vanishing fixed Embedding Layers 
+    - detail error bug fixed Sequential 
+    - Linear Models suport all optimizers 
+    - Linear Models back end on Gradient Reflector 
+    - backward backend Gru bug fixed
+    - output none at callable Linear Models bug fixed  
+
 LittleLearn is an experimental and original machine learning framework built from scratch — inspired by the simplicity of Keras and the flexibility of PyTorch, yet designed with its own architecture, philosophy, and gradient engine.
 
 ## 🧠 What Makes LittleLearn Different?
@@ -76,7 +88,5 @@ This is an alpha-stage project — expect bugs, sharp edges, and lots of potenti
 
 👤 Author
 Candra Alpin Gunawan
-
 📧 hinamatsuriairin@gmail.com
-
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
