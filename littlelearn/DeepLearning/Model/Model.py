@@ -215,7 +215,10 @@ class Sequential :
         """
         if self.loss_val is None :
             raise RuntimeError("Model must Fit first")
-        self.loss_val.plot_trace_operation()
+        try:
+            self.loss_val.plot_trace_operation()
+        except :
+            raise RuntimeError("Run model first for record graph with active grad")
 
 
 class AutoBuildModel : 
@@ -258,7 +261,7 @@ class AutoBuildModel :
 
     def __init__(self,num_target = None,vocab_size=None ,type:Literal['text-sentiment-lstm','mlp-regression',
         'mlp-classification','mlp-binaryclassification','text-sentiment-simple-rnn',
-        'text-sentiment-gru'] = None , level : Literal ['light','balance','deep'] = None ) : 
+        'text-sentiment-gru','sentiment-regression-LSTM','sentiment-regression-GRU'] = None , level : Literal ['light','balance','deep'] = None ) : 
 
         self.__type = type 
         self.__level = level 
@@ -269,11 +272,11 @@ class AutoBuildModel :
 
     
     def __build_model (self) : 
-        from littlelearn.DeepLearning import layers,loss
+        from littlelearn.DeepLearning import layers,loss,activations
         
         if self.__type not in ['text-sentiment-lstm','mlp-regression',
         'mlp-classification','mlp-binaryclassification','text-sentiment-simple-rnn',
-        'text-sentiment-gru'] or None :
+        'text-sentiment-gru','sentiment-regression-LSTM','sentiment-regression-GRU'] or None :
             raise RuntimeError(f"the type model not available for {self.__type}")
         
         if self.__level not in ['light','balance','deep'] or self.__level == None  :
@@ -286,7 +289,7 @@ class AutoBuildModel :
                     layers.Dense(32,activation='relu'),
                     layers.Dense(64,activation='relu'),
                     layers.Dense(1,activation='linear')
-                ],name="light-Regression"),
+                ],name="light-Regression")
                 
 
 
@@ -697,6 +700,85 @@ class AutoBuildModel :
                             optimizer=optimizers.AdamW(),
                             loss = loss.SparseCategoricallCrossentropy()
                         )
+        if self.__type == 'sentiment-regression-LSTM' :
+            if self.__level == 'light':
+                self.__model = Sequential([
+                    layers.Embedding(input_dim=self.__vocab,output_dim=16),
+                    layers.LSTM(16,return_sequence=True),
+                    layers.GlobalAveragePooling1D(),
+                    layers.Dense(64,activation='relu'),
+                    layers.Dense(1,activation=activations.Tanh())
+                ],name='light-lstm-sentiment-regression')
+                self.__model.build_model(
+                    optimizer=optimizers.Rmsprop(0.005),
+                    loss= loss.HuberLoss()
+                )
+            elif self.__level == 'balance' :
+                self.__model = Sequential([
+                    layers.Embedding(input_dim=self.__vocab,output_dim=32),
+                    layers.LSTM(units=32,return_sequence=True),
+                    layers.GlobalAveragePooling1D(),
+                    layers.Dense(128,activation='relu'),
+                    layers.Dense(64,activation='relu'),
+                    layers.Dense(1,activation=activations.Tanh())
+                ],name='balance-lstm-sentiment-regression')
+                self.__model.build_model(optimizer=optimizers.Adam(learning_rate=0.005),
+                                         loss=loss.HuberLoss())
+            
+            else :
+                self.__model = Sequential([
+                    layers.Embedding(self.__vocab,output_dim=32),
+                    layers.LSTM(64,return_sequence=True),
+                    layers.GlobalAveragePooling1D(),
+                    layers.Dense(256,activation='relu'),
+                    layers.Dense(128,activation='relu'),
+                    layers.Dense(64,activation='relu'),
+                    layers.Dense(1,activation=activations.Tanh())
+                ],name='deep-lstm-sentiment-regression')
+                self.__model.build_model(
+                    optimizer=optimizers.AdamW(learning_rate=0.005),
+                    loss=loss.HuberLoss()
+                )
+        
+        if self.__type == 'sentiment-regression-GRU' :
+            if self.__level == 'light' :
+                self.__model = Sequential([
+                    layers.Embedding(input_dim=self.__vocab,output_dim=16),
+                    layers.GRU(16,return_sequence=True),
+                    layers.GlobalAveragePooling1D(),
+                    layers.Dense(32,activation='relu'),
+                    layers.Dense(1,activation=activations.Tanh())
+                ],name='light-gru-sentiment-regression')
+                self.__model.build_model(
+                    optimizer=optimizers.Rmsprop(learning_rate=5e-3),
+                    loss=loss.HuberLoss()
+                )
+            elif self.__level == 'balance':
+                self.__model = Sequential([
+                    layers.Embedding(input_dim=self.__vocab,output_dim=32),
+                    layers.GRU(32,return_sequence=True),
+                    layers.GlobalAveragePooling1D(),
+                    layers.Dense(128,activation='relu'),
+                    layers.Dense(64,activation='relu'),
+                    layers.Dense(1,activation=activations.Tanh())
+                ],name='balance-gru-sentiment-regression')
+                self.__model.build_model(optimizer=optimizers.Adam(learning_rate=5e-3),
+                                         loss=loss.HuberLoss())
+            else :
+                self.__model = Sequential([
+                    layers.Embedding(input_dim=self.__vocab,output_dim=64),
+                    layers.GRU(64,return_sequence=True),
+                    layers.GlobalAveragePooling1D(),
+                    layers.Dense(256,activation='relu'),
+                    layers.Dense(128,activation='relu'),
+                    layers.Dense(64,activation='relu'),
+                    layers.Dense(1,activation=activations.Tanh())
+                ],name='deep-gru-sentiment-regressio')
+                self.__model.build_model(
+                    optimizer=optimizers.AdamW(learning_rate=5e-3),
+                    loss=loss.HuberLoss()
+                )
+                
     
     def fit(self,x,y,epochs:int,verbose : Literal[0,1] = 1) :
         if self.__vocab is None and self.__type in ['text-sentiment-simple-rnn',

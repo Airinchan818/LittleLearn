@@ -43,16 +43,18 @@ Candra Alpin Gunawan
 """
 __name__ = "littlelearn"
 __author__ = "Candra Alpin Gunawan"
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __license__ = "Apache 2.0"
-__realese__ = "28-july-2025"
+__realese__ = "25-August-2025"
 __email__ = "hinamatsuriairin@gmail.com"
 __repo__ = "https://github.com/Airinchan818/LittleLearn"
+__youtube__ = "https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY"
 
 from . import DeepLearning 
 from . import ClassicMachineLearning
 from . import preprocessing
 from .GradientReflector import GradientReflector
+from .GradientReflector import non_active_grad
 
 def convert_to_tensor(x) :
 
@@ -213,7 +215,7 @@ def random_normal(loc=0,std=1,shape=()) :
 
     if len(shape) <= 0 :
         raise RuntimeError(f"Error shape is {shape} can't make data")
-    return normal(loc=loc,scale=std,size=shape)
+    return GradientReflector(normal(loc=loc,scale=std,size=shape))
 
 def random_uniform (low = -1,hight=1,shape=()) :
     from numpy.random import uniform 
@@ -221,3 +223,12 @@ def random_uniform (low = -1,hight=1,shape=()) :
     if len(shape) <= 0 :
         raise RuntimeError(f"error shape is {shape} can't make data")
     return GradientReflector(uniform(low=low,high=hight,size=shape))
+
+def expand_dims (x,axis) :
+    if not isinstance(x,GradientReflector) :
+        x = GradientReflector(x)
+    return x.expand_dims(axis=axis)
+
+def arange_tensor (stop) :
+    from numpy import arange
+    return GradientReflector(arange(stop))

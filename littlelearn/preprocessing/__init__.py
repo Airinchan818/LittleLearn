@@ -10,3 +10,6 @@ from .preprocessing import MinMaxScaller
 from .preprocessing import MaxAbsoluteScaller 
 from .preprocessing import StandardScaller
 from .preprocessing import Tokenizer
+from .preprocessing import LabelEncoder
+from .preprocessing import OneHotEncoder
+from .preprocessing import label_to_onehot

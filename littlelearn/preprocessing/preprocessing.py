@@ -284,3 +284,158 @@ class Tokenizer:
         return np.array(sequences)
 
 
+class LabelEncoder :
+    """
+        Label Encoder
+        -------------
+        its for extract string object class data to numeric representation
+
+        how to use:
+
+            enc=LabelEncoder()
+
+        author: Candra Alpin Gunawan
+    """
+
+    def __init__ (self) :
+        self.class_idx = dict()
+        self.idx_class = dict()
+        self.__counter = 0
+    
+    def fit(self,data : list) :
+        """
+            for fit or train LabelEncoder, call it with list paramters. 
+            example:\n
+                data = list() <= its your data in list  
+                enc = LabelEncoder()
+                enc.fit(data)
+        """
+        if not isinstance(data,list) :
+            raise RuntimeError("Data must be list")
+        for ob in data :
+            if ob not in self.class_idx:
+                self.class_idx[ob] = self.__counter
+                self.idx_class[self.__counter] = ob
+                self.__counter +=1
+    
+    def encod (self,x : list) :
+        """
+            encod for extract data to numeric representation at trained Labelencoder
+            example:\n 
+                enc = LabelEncoder()
+                enc.encod(x)
+        """
+        if not isinstance(x,list) :
+            raise RuntimeError("x must be list")
+        result = list()
+        for data in x :
+            result.append(self.class_idx[data])
+        return np.array(result)
+    
+    def decod (self,x) :
+        """
+            decod is for decod at numeric to class representation, parameters must be numpy array
+            example:\n 
+                enc = LabelEncoder()
+                data = np.array(data)
+                enc.decod(data)
+        """
+        result = list()
+        for i in range(len(x)) :
+            result.append(self.idx_class[x[i]])
+        return result 
+    
+    def fit_encod (self,data:list) :
+        """
+            you can fit and encod a data too. example:
+                enc = LabelEncoder()
+                enc.fit_encod(data)
+        """
+
+
+class OneHotEncoder :
+    """
+        One Hot Encoder give representation index class by 1 values in zeros verctor 
+        [0,1,0,0] = 1 \n 
+        example:
+            enc = OneHotEncoder()
+            enc.fit(data)
+            enc.encod(data)
+            enc.decod(result)
+        
+        author: Candra Alpin Gunawan 
+    """
+    def __init__ (self) :
+        self.__encoder = LabelEncoder()
+    
+    def fit(self,data:list):
+        """
+            fit for train OneHotEncoder example:\n 
+                enc = OneHotEncoder()
+                enc.fit(data)
+                when data is list of data object 
+        """
+        if not isinstance(data,list) :
+            raise RuntimeError("data must be list")
+        self.__encoder.fit(data)
+    
+    def encod (self,data) :
+        """
+            encod this will transform class data to be representation ix class by one hot encoding 
+            data = ['x','y'] = [[1,0],[0,1]]:
+            \n example:\n 
+                enc = OneHotEncoder()
+                enc.encod(data)
+        """
+        if not isinstance(data,list) :
+            raise RuntimeError("data must be list")
+        data = self.__encoder.encod(data)
+        one_hot = list()
+        for item in data :
+            vector = [0] * len(self.__encoder.class_idx)
+            vector[item] = 1
+            one_hot.append(vector)
+        return np.array(one_hot)
+
+    def decod (self,x) :
+        """
+            Warning : the x parameters must be x after predicted a model, you can use 
+            one hot encoding result, but its take so more computer resource
+        """
+        if np.max(x) <=1 :
+            result = list()
+            for data in x :
+                count = 0
+                for idx in data :
+                    if idx == 1:
+                        result.append(count)
+                        break 
+                    count +=1
+            result = np.array(result)
+            result = self.__encoder.decod(result)
+        else :
+            result = self.__encoder.decod(x)
+        
+        return result
+
+
+def label_to_onehot (x,class_num:int) :
+
+    """
+        label to encoder will exchange a label class like [0,1,2,3] to categoricall or one hot 
+        representation. 
+        example:\n 
+            data = np.array([1,2,3])
+            one_hot = label_to_onehot(data,4)
+            output = [[1,0,0,0],
+                    [0,1,0,0],
+                    [0,0,1,0],
+                    [0,0,0,1]]
+        author: Candra Alpin Gunawan 
+    """
+    result = list()
+    for data in x :
+        vector = [0] * class_num
+        vector[data] = 1 
+        result.append(vector)
+    return np.array(result)

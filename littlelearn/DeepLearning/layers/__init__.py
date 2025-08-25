@@ -8,3 +8,10 @@ from .preprocessing_layers import BacthNormalization
 from .preprocessing_layers import GlobalAveragePooling1D
 from .Layers import MultiHeadAttention
 from .Layers import Attention
+from .Transformers_part import BlockDecoder_attention
+from .Transformers_part import BlockDecoder_MHA
+from .Transformers_part import BlockDecoder_MHA_cross
+from .Transformers_part import BlockDecoders_Attention_cross 
+from .Transformers_part import Feed_forward 
+from .Transformers_part import BlockEncoder_Attention
+from .Transformers_part import BlockEncoder_MHA

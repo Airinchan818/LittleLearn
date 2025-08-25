@@ -1,0 +1,637 @@
+from littlelearn.DeepLearning import optimizers,activations,layers
+import littlelearn as ll 
+
+class Feed_forward :
+    """
+        Feed forward (FFN)
+        -----------------
+        this is a part a transformers model when the model have attention logits. the attention 
+        logits will proces by Feed forward to bring information to be indenpendent token information,
+        Feed forward will upgrade non linear information understanding for to next block or next layers. 
+
+        Parameters
+        ---------------
+            d_model : int 
+                its like unit in classic DNN layers but d_model must be same with blocktransformers d_model units,
+                to bring a information as the d_model transformers model
+
+
+            ffn_dim : int 
+                same with units in classif layers DNN this parameters actually work to give more non linear
+                information. ffn_dim always big more than d_model parameters cause at asumtion we want bring 
+                logits information from attention to look more deep non linear information.
+        
+        example
+        -------------
+            layers = Feed_forward(d_model=32,ffn_dim=128)\n
+            layers(x)
+
+        Author
+        ------------
+        Candra Alpin Gunawan
+    """
+    def __init__(self,d_model,ffn_dim ) : 
+        self.ffn_dim = ffn_dim 
+        self.linear_l = layers.Dense(ffn_dim,activation=activations.Gelu())
+        self.out_linear = layers.Dense(d_model)
+    
+    def get_weight(self) : 
+        """
+        call it for get weight at this layers 
+        """
+        weight = list() 
+        for layers in [self.linear_l,self.out_linear] :
+            wgl = layers.get_weight()
+            for w in wgl : 
+                weight.append(w)
+        return weight 
+    
+    def __call__ (self,x) : 
+        x = self.linear_l(x)
+        x = self.out_linear(x)
+        return x 
+class BlockEncoder_MHA:
+    """
+    Transformer-style encoder block using Multi-Head Attention (MHA) 
+    and a feed-forward network (FFN).
+
+    This block performs:
+    1. Multi-Head Self-Attention
+    2. Residual Connection + Layer Normalization
+    3. Feed-Forward Network
+    4. Residual Connection + Layer Normalization
+
+    Args:
+        num_head (int): Number of attention heads.
+        d_model (int): Dimensionality of the model (hidden size).
+        ffn (int): Dimensionality of the feed-forward layer.
+    
+    example
+    ---------
+        layers = BlockEncoder_MHA(num_head=4,d_model=32,ffn=64)\n
+        layers(x)
+    
+    Author
+    -----------
+    Candra Alpin Gunawan
+    
+    """
+
+    def __init__(self, num_head: int, d_model: int, ffn: int):
+        """
+        Initialize the encoder block layers.
+
+        Args:
+            num_head (int): Number of attention heads.
+            d_model (int): Dimensionality of the model (hidden size).
+            ffn (int): Dimensionality of the feed-forward layer.
+        """
+        self.num_head = num_head
+        self.d_model = d_model
+        self.ffn = ffn
+
+        self.Multihead_Attention = layers.MultiHeadAttention(
+            units=self.d_model, 
+            num_heads=num_head
+        )
+
+        self.feed_forward = Feed_forward(
+            d_model=self.d_model, 
+            ffn_dim=self.ffn
+        )
+
+        self.normal1 = layers.LayerNormalization()
+        self.normal2 = layers.LayerNormalization()
+
+    def get_weight(self):
+        """
+        Get all trainable weights of this encoder block.
+
+        Returns:
+            list: List of all trainable weight tensors.
+        """
+        weight = []
+
+        for lyr in [self.Multihead_Attention, self.normal1, self.feed_forward, self.normal2]:
+            wg = lyr.get_weight()
+            if wg is not None:
+                weight.extend(wg)
+        return weight
+
+    def __call__(self, x):
+        """
+        Forward pass through the encoder block.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, seq_len, d_model).
+
+        Returns:
+            Tensor: Output tensor after self-attention and feed-forward network.
+        """
+
+        attn = self.Multihead_Attention(x, x, x)
+        attn = self.normal1(attn + x)
+
+
+        ffn = self.feed_forward(attn)
+        ffn = self.normal2(ffn + attn)
+
+        return ffn
+
+class BlockDecoder_MHA_cross:
+    """
+    Transformer-style decoder block with both self-attention and cross-attention.
+
+    This block performs:
+    1. Masked Multi-Head Self-Attention (causal mask applied)
+    2. Residual Connection + Layer Normalization
+    3. Cross-Attention (attending to encoder outputs)
+    4. Residual Connection + Layer Normalization
+    5. Feed-Forward Network
+    6. Residual Connection + Layer Normalization
+
+    Args:
+        num_head (int): Number of attention heads.
+        d_model (int): Dimensionality of the model (hidden size).
+        ffn (int): Dimensionality of the feed-forward layer.
+    
+    Example
+    ----------
+        layers = BlockDecoder_MHA_cross(num_head=4,d_model,64,ffn=256)\n   
+        layers(x)
+    
+    Author
+    ------------
+        Candra Alpin Gunawan
+    """
+
+    def __init__(self, num_head: int, d_model: int, ffn: int):
+        """
+        Initialize the decoder block layers.
+
+        Args:
+            num_head (int): Number of attention heads.
+            d_model (int): Dimensionality of the model (hidden size).
+            ffn (int): Dimensionality of the feed-forward layer.
+        """
+        self.num_head = num_head
+        self.d_model = d_model
+        self.ffn = ffn
+
+
+        self.feed_forward = Feed_forward(
+            d_model=self.d_model,
+            ffn_dim=self.ffn
+        )
+
+
+        self.MultiHead_attn = layers.MultiHeadAttention(
+            units=self.d_model,
+            num_heads=self.num_head,
+            use_causal_mask=True
+        )
+
+
+        self.MultiHead_attn2 = layers.MultiHeadAttention(
+            units=self.d_model,
+            num_heads=self.num_head
+        )
+
+
+        self.normal1 = layers.LayerNormalization()
+        self.normal2 = layers.LayerNormalization()
+        self.normal3 = layers.LayerNormalization()
+
+
+        self.__node_layers = [
+            self.MultiHead_attn,
+            self.normal1,
+            self.MultiHead_attn2,
+            self.normal2,
+            self.feed_forward,
+            self.normal3
+        ]
+
+    def get_weight(self):
+        """
+        Retrieve all trainable weights of this decoder block.
+
+        Returns:
+            list: List of all trainable weight tensors.
+        """
+        weight = []
+        for lyr in self.__node_layers:
+            wg = lyr.get_weight()
+            if wg is not None:
+                weight.extend(wg)
+        return weight
+
+    def __call__(self, x, cross_attn):
+        """
+        Forward pass through the decoder block.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, target_seq_len, d_model).
+            cross_attn (Tensor): Encoder output for cross-attention 
+                                 (shape: batch_size, source_seq_len, d_model).
+
+        Returns:
+            Tensor: Output tensor after self-attention, cross-attention, 
+                    and feed-forward network.
+        """
+
+        attn = self.MultiHead_attn(x, x, x)
+        attn = self.normal1(attn + x)
+
+
+        cross = self.MultiHead_attn2(attn, cross_attn, cross_attn)
+        cross = self.normal2(cross + attn)
+
+        ffn = self.feed_forward(cross)
+        ffn = self.normal3(ffn + cross)
+
+        return ffn
+
+
+class BlockEncoder_Attention:
+    """
+    Transformer-style encoder block using single-head Attention 
+    (instead of Multi-Head Attention) and a feed-forward network.
+
+    This block performs:
+    1. Single Attention
+    2. Residual Connection + Layer Normalization
+    3. Feed-Forward Network
+    4. Residual Connection + Layer Normalization
+
+    Args:
+        d_model (int): Dimensionality of the model (hidden size).
+        ffn_dim (int): Dimensionality of the feed-forward layer.
+    
+    Example
+    -------------
+        layers = BlockEncoder_Attention(d_model=32,ffn_dim=128) \n
+        layers(x)
+    
+    Author 
+    ------------
+        Candra Alpin Gunawan
+    """
+
+    def __init__(self, d_model: int, ffn_dim: int):
+        """
+        Initialize the encoder block layers.
+
+        Args:
+            d_model (int): Dimensionality of the model (hidden size).
+            ffn_dim (int): Dimensionality of the feed-forward layer.
+        """
+        self.d_model = d_model
+        self.ffn = ffn_dim
+
+
+        self.feed_forward = Feed_forward(
+            d_model=self.d_model,
+            ffn_dim=self.ffn
+        )
+
+
+        self.Attention = layers.Attention(units=d_model)
+
+
+        self.normal1 = layers.LayerNormalization()
+        self.normal2 = layers.LayerNormalization()
+
+        self.__node_layers = [
+            self.Attention,
+            self.normal1,
+            self.feed_forward,
+            self.normal2
+        ]
+
+    def get_weight(self):
+        """
+        Retrieve all trainable weights of this encoder block.
+
+        Returns:
+            list: List of all trainable weight tensors.
+        """
+        weight = []
+        for lyr in self.__node_layers:
+            wg = lyr.get_weight()
+            if wg is not None:
+                weight.extend(wg)
+        return weight
+
+    def __call__(self, x):
+        """
+        Forward pass through the encoder block.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, seq_len, d_model).
+
+        Returns:
+            Tensor: Output tensor after attention and feed-forward network.
+        """
+
+        attn = self.Attention(x, x, x)
+        attn = self.normal1(attn)
+
+
+        ffn = self.feed_forward(attn)
+        ffn = self.normal2(ffn + attn)
+
+        return ffn
+
+class BlockDecoders_Attention_cross:
+    """
+    Transformer-style decoder block using single-head attention for both 
+    self-attention and cross-attention, followed by a feed-forward network.
+
+    This block performs:
+    1. Masked Self-Attention (causal masking enabled)
+    2. Residual Connection + Layer Normalization
+    3. Cross-Attention (attending to encoder outputs)
+    4. Residual Connection + Layer Normalization
+    5. Feed-Forward Network
+    6. Residual Connection + Layer Normalization
+
+    Args:
+        d_model (int): Dimensionality of the model (hidden size).
+        ffn_dim (int): Dimensionality of the feed-forward network.
+    
+    Example
+    ---------
+        layers = BlockDecoders_Attention_cross(d_model=32,ffn_dim-128)\n
+        layers(x)
+    
+    Author
+    ---------
+        Candra Alpin Gunawan
+    """
+
+    def __init__(self, d_model: int, ffn_dim: int):
+        """
+        Initialize the decoder block layers.
+
+        Args:
+            d_model (int): Dimensionality of the model (hidden size).
+            ffn_dim (int): Dimensionality of the feed-forward layer.
+        """
+        self.d_model = d_model
+        self.ffn = ffn_dim
+
+        self.feed_forward = Feed_forward(
+            d_model=d_model,
+            ffn_dim=self.ffn
+        )
+
+        self.Attention1 = layers.Attention(
+            d_model,
+            Masking=True
+        )
+
+
+        self.Attention2 = layers.Attention(
+            d_model,
+            Masking=False
+        )
+
+
+        self.normal1 = layers.LayerNormalization()
+        self.normal2 = layers.LayerNormalization()
+        self.normal3 = layers.LayerNormalization()
+
+        self.__node_layers = [
+            self.Attention1,
+            self.normal1,
+            self.Attention2,
+            self.normal2,
+            self.feed_forward,
+            self.normal3
+        ]
+
+    def get_weight(self):
+        """
+        Retrieve all trainable weights of this decoder block.
+
+        Returns:
+            list: List of all trainable weight tensors.
+        """
+        weight = []
+        for lyr in self.__node_layers:
+            wg = lyr.get_weight()
+            if wg is not None:
+                weight.extend(wg)
+        return weight
+
+    def __call__(self, x, cross_attn):
+        """
+        Forward pass through the decoder block.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, target_seq_len, d_model).
+            cross_attn (Tensor): Encoder output tensor for cross-attention 
+                                 (shape: batch_size, source_seq_len, d_model).
+
+        Returns:
+            Tensor: Output tensor after attention layers and feed-forward network.
+        """
+
+        attn = self.Attention1(x, x, x)
+        attn = self.normal1(attn + x)
+
+        cross = self.Attention2(attn, cross_attn, cross_attn)
+        cross = self.normal2(cross + attn)
+
+        ffn = self.feed_forward(cross)
+        ffn = self.normal3(ffn + cross)
+
+        return ffn
+
+class BlockDecoder_MHA:
+    """
+    Transformer-style decoder block with Multi-Head Self-Attention (MHA) 
+    followed by a feed-forward network (FFN).
+
+    This block performs:
+    1. Masked Multi-Head Self-Attention (causal masking applied for autoregressive decoding)
+    2. Residual Connection + Layer Normalization
+    3. Feed-Forward Network
+    4. Residual Connection + Layer Normalization
+
+    Args:
+        num_head (int): Number of attention heads.
+        d_model (int): Dimensionality of the model (hidden size).
+        ffn (int): Dimensionality of the feed-forward layer.
+    
+    Example
+    ----------
+        layers = BlockDecoder_MHA(num_head=4,d_model=32,ffn=128)\n
+        layers(x)
+
+    Author
+    ----------
+        Candra Alpin Gunawan
+    """
+
+    def __init__(self, num_head: int, d_model: int, ffn: int):
+        """
+        Initialize the decoder block layers.
+
+        Args:
+            num_head (int): Number of attention heads.
+            d_model (int): Dimensionality of the model (hidden size).
+            ffn (int): Dimensionality of the feed-forward layer.
+        """
+        self.num_head = num_head
+        self.d_model = d_model
+        self.ffn = ffn
+
+        self.feed_forward = Feed_forward(
+            self.d_model,
+            ffn_dim=self.ffn
+        )
+
+
+        self.MultiHead_attn = layers.MultiHeadAttention(
+            d_model,
+            num_heads=self.num_head,
+            use_causal_mask=True  
+        )
+
+
+        self.normal1 = layers.LayerNormalization()
+        self.normal2 = layers.LayerNormalization()
+
+        self.__node_layers = [
+            self.MultiHead_attn,
+            self.normal1,
+            self.feed_forward,
+            self.normal2
+        ]
+
+    def get_weight(self):
+        """
+        Retrieve all trainable weights of this decoder block.
+
+        Returns:
+            list: List of all trainable weight tensors.
+        """
+        weight = []
+        for lyr in self.__node_layers:
+            wg = lyr.get_weight()
+            if wg is not None:
+                weight.extend(wg)
+        return weight
+
+    def __call__(self, x):
+        """
+        Forward pass through the decoder block.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, target_seq_len, d_model).
+
+        Returns:
+            Tensor: Output tensor after masked multi-head self-attention 
+                    and feed-forward network.
+        """
+ 
+        attn = self.MultiHead_attn(x, x, x)
+        attn = self.normal1(attn + x)
+
+
+        ffn = self.feed_forward(attn)
+        ffn = self.normal2(ffn + attn)
+
+        return ffn
+
+class BlockDecoder_attention:
+    """
+    A Transformer Decoder Block with Attention and Feed-Forward Network.
+
+    This class implements a single decoder block used in transformer-based 
+    architectures. It applies self-attention, residual connections, 
+    normalization, and a position-wise feed-forward network.
+
+    Attributes:
+        d_model (int): Dimensionality of the model embeddings.
+        ffn (int): Dimensionality of the feed-forward network.
+        feed_forward (Feed_forward): Feed-forward sublayer instance.
+        Attention (layers.Attention): Multi-head attention mechanism.
+        normal1 (layers.LayerNormalization): First normalization layer.
+        normal2 (layers.LayerNormalization): Second normalization layer.
+    
+    Example
+    ---------
+        layers = BlockDecoder_attention(d_model=32,ffn_dim=128)\n 
+        layers(x)
+    
+    Author
+    ---------
+    Candra Alpin Gunawan
+    """
+
+    def __init__(self, d_model, ffn_dim):
+        """
+        Initializes the decoder block.
+
+        Args:
+            d_model (int): Dimension of the model embeddings.
+            ffn_dim (int): Dimension of the feed-forward network.
+        """
+        self.d_model = d_model
+        self.ffn = ffn_dim
+        
+
+        self.feed_forward = Feed_forward(self.d_model, ffn_dim=self.ffn)
+        
+
+        self.Attention = layers.Attention(self.d_model, Masking=True)
+        
+
+        self.normal1 = layers.LayerNormalization()
+        self.normal2 = layers.LayerNormalization()
+
+
+        self.__node_layers = [
+            self.Attention,
+            self.normal1,
+            self.feed_forward,
+            self.normal2
+        ]
+
+    def get_weight(self):
+        """
+        Collects and returns all trainable weights from this block.
+
+        Returns:
+            list: A list of weight tensors from each sublayer.
+        """
+        weight = []
+        for layer in self.__node_layers:
+            wg = layer.get_weight()
+            if wg is not None:
+                for w in wg:
+                    weight.append(w)
+        return weight
+
+    def __call__(self, x):
+        """
+        Forward pass through the decoder block.
+
+        Args:
+            x (tensor): Input tensor of shape (batch_size, seq_len, d_model).
+
+        Returns:
+            tensor: Output tensor after attention and feed-forward layers.
+        """
+        
+        attn = self.Attention(x, x, x)
+        attn = self.normal1(attn + x)
+
+        ffn = self.feed_forward(attn)
+        ffn = self.normal2(ffn + attn)
+
+        return ffn
+

@@ -4,7 +4,40 @@ import matplotlib.pyplot as plt
 import networkx as nx  
 from typing import Literal
 from numba import jit
+import gc
+from contextlib import contextmanager
 
+active_grad_status = True
+
+@contextmanager 
+def non_active_grad () :
+    """
+        non_active_grad
+        ---------------
+        call it when a model or another operation not need grad. 
+
+        how to use
+        ----------
+
+        from littlelearn import non_active_grad
+
+        with non_active_grad():
+            outputs = model(x)
+            print(outputs)
+        
+        Warning!!:
+        ---------
+        when you want use plot_trace_operation from GradientReflector object or tensor object
+        don't use it.
+            
+        author: Candra Alpin Gunawan 
+    """
+
+    global active_grad_status
+    active_grad_status = False 
+    yield 
+    active_grad_status = True 
+ 
 class GradientReflector :
     """
        
@@ -67,15 +100,13 @@ class GradientReflector :
         Author: Candra Alpin Gunawan 
         """
 
-
-
     def __init__ (self,tensor,_children=(),_op='',_dtype=np.float32) :
         self.tensor = np.array(tensor,dtype=_dtype)
         self.gradient =  np.zeros_like(self.tensor,dtype=_dtype)
+        self.active_grad = active_grad_status
         self._backwardpass = lambda : None 
         self._Node = _children
         self._op = _op 
-        self.__kill_gradient = False
         self.__grad_expload_signal = None
         self.__norm_signal = None 
         self.__auto_clip = False 
@@ -102,7 +133,10 @@ class GradientReflector :
 
     def __add__(self,other) :
         other = other if isinstance(other,GradientReflector) else GradientReflector(other)
-        out = GradientReflector((self.tensor + other.tensor),(self,other),'+')
+        if self.active_grad is True :
+            out = GradientReflector((self.tensor + other.tensor),(self,other),'+')
+        else :
+            out = GradientReflector((self.tensor + other.tensor),_op='=')
         def _backward () :
             grad = self.__adjust_gradient(out.gradient,self.tensor.shape)
             grad_other = self.__adjust_gradient(out.gradient,other.tensor.shape)
@@ -113,7 +147,11 @@ class GradientReflector :
     
     def __sub__ (self,other) :
         other = other if isinstance(other,GradientReflector) else GradientReflector(other)
-        out = GradientReflector((self.tensor - other.tensor),(self,other),'-')
+        
+        if self.active_grad is True :
+            out = GradientReflector((self.tensor - other.tensor),(self,other),'-')
+        else :
+            out = GradientReflector((self.tensor - other.tensor),_op='-')
         def _backward () :
             grad = self.__adjust_gradient(out.gradient, self.tensor.shape)
             grad_other = self.__adjust_gradient(out.gradient, other.tensor.shape)
@@ -124,7 +162,10 @@ class GradientReflector :
         return out 
     
     def pow (self,power_values) :
-        out = GradientReflector(np.power(self.tensor,power_values),(self,),'pow')
+        if self.active_grad is True :
+            out = GradientReflector(np.power(self.tensor,power_values),(self,),'pow')
+        else :
+            out = GradientReflector(np.power(self.tensor,power_values),_op='pow')
         def _backward() :
             grad = power_values * (np.power(self.tensor,power_values-1))
             self.gradient += grad * out.gradient
@@ -133,21 +174,32 @@ class GradientReflector :
     
     def __mul__ (self,other) :
         other = other if isinstance(other,GradientReflector) else GradientReflector(other)
-        out = GradientReflector((self.tensor * other.tensor),(self,other),'*')
+        if self.active_grad is True :
+            out = GradientReflector((self.tensor * other.tensor),(self,other),_op='*')
+        else :
+            out = GradientReflector((self.tensor * other.tensor),'*')
         def _backward () :
-            grad = self.__adjust_gradient(out.gradient,self.gradient.shape)
-            self.gradient += other.tensor * grad
-            other.gradient += self.tensor * grad
+            grad_= out.gradient
+            grad_out = other.tensor * grad_
+            grad = self.__adjust_gradient(grad_out,self.gradient.shape)
+            self.gradient += grad 
+            
+            other_grad = self.tensor * grad_
+            other_grad = self.__adjust_gradient(other_grad,other.tensor.shape)
+            other.gradient += other_grad
         out._backwardpass = _backward
         return out 
     
     def __truediv__(self,other) :
         other = other if isinstance(other,GradientReflector) else GradientReflector(other) 
-        out = GradientReflector((self.tensor / other.tensor),(self,other),"/")
+        if self.active_grad is True :
+            out = GradientReflector((self.tensor / other.tensor),(self,other),"/")
+        else : 
+            GradientReflector((self.tensor / other.tensor),_op="/")
         def _backward () :
             grad = self.__adjust_gradient(out.gradient,self.gradient.shape)
-            self.gradient += (np.ones_like(self.tensor) / other.tensor) * out.gradient
-            other.gradient += (-self.tensor / np.power(other.tensor,2)) * out.gradient
+            self.gradient += (np.ones_like(self.tensor) / other.tensor) * grad
+            other.gradient += (-self.tensor / np.power(other.tensor,2)) * grad 
         out._backwardpass = _backward
         return out 
     
@@ -156,7 +208,10 @@ class GradientReflector :
     
     def __pow__ (self,other) :
         assert isinstance(other,(int,float))
-        out = GradientReflector(np.power(self.tensor,other),(self,),f'**{other}') 
+        if self.active_grad is True :
+            out = GradientReflector(np.power(self.tensor,other),(self,),f'**{other}') 
+        else :
+            out = GradientReflector(np.power(self.tensor,other),_op=f'**{other}') 
         def _backward() :
             self.gradient += (other * np.power(self.tensor,other -1)) * out.gradient
         out._backwardpass = _backward
@@ -177,7 +232,10 @@ class GradientReflector :
         return self * other 
     
     def relu (self) :
-        out = GradientReflector(np.maximum(0,self.tensor),(self,),'relu')
+        if self.active_grad is True :
+            out = GradientReflector(np.maximum(0,self.tensor),(self,),'relu')
+        else : 
+            out = GradientReflector(np.maximum(0,self.tensor),_op='relu')
         x = self.tensor
         def _backward() :
             self.gradient += np.where(x>0,1,0) * out.gradient
@@ -192,7 +250,10 @@ class GradientReflector :
         def backward_leaky_relu (x,alpha) :
             return np.where(x > 0,1,alpha)
         out = forward(self.tensor,alpha)
-        outputs = GradientReflector(out,(self,),'leaky_relu')
+        if self.active_grad is True :
+            outputs = GradientReflector(out,(self,),'leaky_relu')
+        else :
+            outputs = GradientReflector(out,_op='leaky_relu')
         def _backward () :
             grad = backward_leaky_relu(self.tensor,alpha)
             self.gradient += grad * outputs.gradient
@@ -204,7 +265,10 @@ class GradientReflector :
         @jit(nopython=True,cache=True)
         def count_tanh(x) :
             return np.tanh(x)
-        outputs = GradientReflector(count_tanh(x),(self,),'tanh')
+        if self.active_grad is True :
+            outputs = GradientReflector(count_tanh(x),(self,),'tanh')
+        else : 
+            outputs = GradientReflector(count_tanh(x),_op='tanh')
         def _backward() :
             self.gradient += (1 - np.tanh(x)**2)* outputs.gradient
         outputs._backwardpass = _backward
@@ -222,7 +286,10 @@ class GradientReflector :
             return s + beta * x * s * (1 - s)
 
         out_tensor = forward(self.tensor, Beta)
-        outputs = GradientReflector(out_tensor, (self,), 'swish')
+        if self.active_grad is True :
+            outputs = GradientReflector(out_tensor, (self,), 'swish')
+        else :
+            outputs = GradientReflector(out_tensor, _op='swish')
 
         def _backward():
             grad = backward(self.tensor, Beta)
@@ -245,7 +312,10 @@ class GradientReflector :
             derivative_s = sigmoid_values * (1 - sigmoid_values)
             grad = sigmoid_values + x * derivative_s * coef 
             return grad 
-        outputs = GradientReflector(forward(self.tensor),(self,),'gelu') 
+        if self.active_grad is True :
+            outputs = GradientReflector(forward(self.tensor),(self,),'gelu') 
+        else :
+            outputs = GradientReflector(forward(self.tensor),_op='gelu')
         def _backward () :
             grad  = backward_gelu(self.tensor)
             self.gradient += grad * outputs.gradient
@@ -253,7 +323,10 @@ class GradientReflector :
         return outputs
     
     def linear (self) :
-        outputs = GradientReflector(self.tensor,(self,),'linear')
+        if self.active_grad is True :
+            outputs = GradientReflector(self.tensor,(self,),'linear')
+        else : 
+            outputs = GradientReflector(self.tensor,_op='linear')
         def _backward () :
             self.gradient += np.ones_like(self.tensor) * outputs.gradient
         outputs._backwardpass = _backward
@@ -274,7 +347,10 @@ class GradientReflector :
                 return exp_values / sum_values
             
             scores = div_values(x_exp,x_sum,epsilon)
-            outputs = GradientReflector(scores, (self,), 'softmax')
+            if self.active_grad is True :
+                outputs = GradientReflector(scores, (self,), 'softmax')
+            else :
+                outputs = GradientReflector(scores, _op= 'softmax')
             def _backward():
                 if use_categorical == True  :
                     grad = outputs.gradient
@@ -293,14 +369,21 @@ class GradientReflector :
             raise
 
     def exp(self) :
-        outputs = GradientReflector((np.exp(self.tensor)),(self,),'exp')
+        if self.active_grad is True :
+
+            outputs = GradientReflector((np.exp(self.tensor)),(self,),'exp')
+        else : 
+            outputs = GradientReflector((np.exp(self.tensor)),_op='exp')
         def _backward() :
             self.gradient += np.exp(self.tensor) * outputs.gradient 
         outputs._backwardpass = _backward
         return outputs
         
     def log(self) :
-        outputs = GradientReflector((np.log(self.tensor)),(self,),'log')
+        if self.active_grad is True :
+            outputs = GradientReflector((np.log(self.tensor)),(self,),'log')
+        else : 
+            outputs = GradientReflector((np.log(self.tensor)),_op='log')
         def _backward() :
             self.gradient += (1 / self.tensor) * outputs.gradient
         outputs._backwardpass = _backward
@@ -312,7 +395,10 @@ class GradientReflector :
         a_values = self.tensor.swapaxes(-1,-2) if transpose_a else self.tensor
         b_values = other.tensor.swapaxes(-1,-2) if transpose_b else other.tensor
         result = np.matmul(a_values,b_values)
-        outputs = GradientReflector(result,(self,other),'matmul')
+        if self.active_grad is True :
+            outputs = GradientReflector(result,(self,other),'matmul')
+        else :
+            outputs = GradientReflector(result,_op='matmul')
         def _backward () :
             if transpose_a :
                 b = b_values.swapaxes(-1,-2)
@@ -342,8 +428,10 @@ class GradientReflector :
         @jit(nopython=True,cache=True)
         def dot_product (x,b):
             return np.dot(x,b)
-        outputs = GradientReflector(dot_product(self.tensor,other.tensor),(self,other),'dot')
-        
+        if self.active_grad is True :
+            outputs = GradientReflector(dot_product(self.tensor,other.tensor),(self,other),'dot')
+        else :
+            outputs = GradientReflector(dot_product(self.tensor,other.tensor),_op='dot')
         def _backward() :
             a = self.tensor.T 
             b = other.tensor.T
@@ -353,7 +441,10 @@ class GradientReflector :
         return outputs
     
     def sin(self) :
-        outputs = GradientReflector(np.sin(self.tensor),(self,),'sin')
+        if self.active_grad is True :
+            outputs = GradientReflector(np.sin(self.tensor),(self,),'sin')
+        else :
+            outputs = GradientReflector(np.sin(self.tensor),_op='sin')
         def _backward() :
             self.gradient += np.cos(self.tensor) * outputs.gradient
         
@@ -361,7 +452,10 @@ class GradientReflector :
         return outputs 
     
     def cos (self) :
-        outputs = GradientReflector(np.cos(self.tensor),(self,),'cos')
+        if self.active_grad is True :
+            outputs = GradientReflector(np.cos(self.tensor),(self,),'cos')
+        else :
+            outputs = GradientReflector(np.cos(self.tensor),_op='cos')
         def _backward():
             self.gradient += -np.sin(self.tensor) * outputs.gradient
 
@@ -369,14 +463,21 @@ class GradientReflector :
         return outputs
     
     def tan(self) :
-        outputs = GradientReflector(np.tan(self.tensor),(self,),'tan')
+        if self.active_grad is True :
+
+            outputs = GradientReflector(np.tan(self.tensor),(self,),'tan')
+        else :
+            outputs = GradientReflector(np.tan(self.tensor),_op='tan')
         def _backward() :
             self.gradient += (1 / np.power(np.cos(self.tensor),2)) * outputs.gradient
         outputs._backwardpass = _backward
         return outputs
     
     def clip (self,min_vals,max_vals) :
-        outputs = GradientReflector(np.clip(self.tensor,min_vals,max_vals),(self,),'clip')
+        if self.active_grad is True :
+            outputs = GradientReflector(np.clip(self.tensor,min_vals,max_vals),(self,),'clip')
+        else : 
+            outputs = GradientReflector(np.clip(self.tensor,min_vals,max_vals),_op='clip')
         def _backward() :
             grad = (self.tensor >= min_vals) & (self.tensor <= max_vals)
             self.gradient += grad.astype(float) * outputs.gradient
@@ -384,7 +485,11 @@ class GradientReflector :
         return outputs 
     
     def __getitem__(self,idx) :
-        outputs = GradientReflector(self.tensor[idx],(self,),f'getitem{idx}')
+        if self.active_grad is True:
+
+            outputs = GradientReflector(self.tensor[idx],(self,),f'getitem{idx}')
+        else : 
+            outputs = GradientReflector(self.tensor[idx],_op='getitem{idx}')
         def _backward () :
             grad = np.zeros_like(self.tensor)
             grad[idx] = outputs.gradient 
@@ -393,7 +498,10 @@ class GradientReflector :
         return outputs 
     
     def reshape(self,shape=()) :
-        outputs = GradientReflector(np.reshape(self.tensor,shape),(self,),'reshape')
+        if self.active_grad :
+            outputs = GradientReflector(np.reshape(self.tensor,shape),(self,),'reshape')
+        else : 
+            outputs = GradientReflector(np.reshape(self.tensor,shape),_op='reshape')
         def _backward () :
             self.gradient += np.reshape(outputs.tensor,(self.tensor.shape))
         outputs._backwardpass = _backward
@@ -409,7 +517,10 @@ class GradientReflector :
             return s * (1 - s)
         
         result = forward(self.tensor)
-        outputs = GradientReflector(result,(self,),'sigmoid')
+        if self.active_grad is True :
+            outputs = GradientReflector(result,(self,),'sigmoid')
+        else :
+            outputs = GradientReflector(result,_op='sigmoid')
         def _backward () :
             s = outputs.tensor
             grad = backward_sigmoid(s)
@@ -419,6 +530,17 @@ class GradientReflector :
     
 
     def binarycrossetnropy (self,y_true,epsilon=1e-6,from_logits = False) :
+        """
+            how to use
+            -----------
+            y_pred = its model predicted data, as usually its always Tensor for Engine grad\n 
+            y_true = the true of label datasets \n 
+            y_pred.binarycrossetnropy(y_true)
+
+            Author
+            ----------
+            Candra Alpin Gunawan 
+        """
         if isinstance(y_true,GradientReflector) : 
             n = len(y_true.tensor)
             y = y_true.tensor 
@@ -432,7 +554,11 @@ class GradientReflector :
 
         y_pred = np.clip(y_pred,epsilon,1-epsilon)
         loss = (-1/n) * np.sum(y * np.log(y_pred + epsilon) + (1 - y) * np.log(1 - y_pred + epsilon))
-        outputs = GradientReflector(loss,(self,),'binary_crossentropy')
+        if self.active_grad is True :
+            outputs = GradientReflector(loss,(self,),'binary_crossentropy')
+        else :
+            outputs = GradientReflector(loss,_op='binary_crossentropy')
+
         def _backward () :
             grad = (y_pred - y_true) / n               
             self.gradient += grad * outputs.gradient
@@ -440,6 +566,17 @@ class GradientReflector :
         return outputs 
     
     def categoricallcrossentropy (self,y_true,epsilon=1e-6,from_logits=False) :
+        """
+            how to use
+            -----------
+            y_pred = its model predicted data, as usually its always Tensor for Engine grad\n 
+            y_true = the true of label datasets \n 
+            y_pred.categoricallcrossentropy(y_true)
+
+            Author
+            ----------
+            Candra Alpin Gunawan 
+        """
         if isinstance(y_true,GradientReflector) : 
             y = y_true.tensor
         else : 
@@ -453,15 +590,42 @@ class GradientReflector :
             x_sum[x_sum==0] = epsilon
             y_pred = x_exp / x_sum 
         y_pred = np.clip(y_pred,epsilon,1-epsilon)
-        loss = -np.sum((y) * np.log(y_pred))
-        outputs = GradientReflector(loss,(self,),'categoricall_crossentropy')
+        if y_pred.ndim <= 2 :
+            loss = -np.sum((y) * np.log(y_pred))
+        else : 
+            loss = list()
+            for i in range(y_pred.shape[0]) :
+                loss_values = -np.sum(y[i] * np.log(y_pred[i]))
+                loss.append(loss_values)
+            loss = np.array(loss).mean()
+        if self.active_grad is True :
+            outputs = GradientReflector(loss,(self,),'categoricall_crossentropy')
+        else :
+            outputs = GradientReflector(loss,_op='categoricall_crossentropy')
         def _backward () :
-            grad = (y_pred - y) / len(y) 
+            if y_pred.ndim <= 2:
+                grad = (y_pred - y) / len(y) 
+            else :
+                grad = list()
+                for i in range(y_pred.shape[0]) :
+                    grad.append((y_pred[i] - y[i])/len(y[i]))
+                grad = np.array(grad).sum()
             self.gradient += grad * outputs.gradient
         outputs._backwardpass = _backward
         return outputs 
     
     def sparsecategoricallcrossentropy (self,y_true,epsilon=1e-6,from_logits=False) :
+        """
+            how to use
+            -----------
+            y_pred = its model predicted data, as usually its always Tensor for Engine grad\n 
+            y_true = the true of label datasets \n 
+            y_pred.sparsecategoricallcrossentropy(y_true)
+
+            Author
+            ----------
+            Candra Alpin Gunawan 
+        """
         if isinstance(y_true,GradientReflector) : 
             y = y_true.tensor 
         else :
@@ -474,28 +638,70 @@ class GradientReflector :
             x_sum = np.sum(x_exp,axis=-1,keepdims=True)
             x_sum[x_sum==0] = epsilon 
             y_pred = x_exp / x_sum
+        if y_pred.ndim <=2 :
+            y_pred = np.clip(y_pred,epsilon,1 - epsilon)
+            labels_indeks_True = np.arange(len(y))
+            Loss = -np.log(y_pred[labels_indeks_True,y])
+            out = np.mean(Loss)
+        else :
+            y_pred = np.clip(y_pred,epsilon,1-epsilon)
+            cache = list()
+            def count_loss (y_true,y_pred) :
+                labels_indeks_True = np.arange(len(y_true))
+                loss = -np.log(y_pred[labels_indeks_True,y_true])
+                return np.mean(loss),labels_indeks_True
+            out = list()
+            for i in range(y.shape[0]) :
+                tensor_out,cc = count_loss(y[i],y_pred[i])
+                out.append(tensor_out)
+                cache.append(cc)
+            out = np.array(out).mean()
+        
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,),'sparse_categoricallcrossentropy')
+        else :
+            outputs = GradientReflector(out,_op='sparse_categoricallcrossentropy')
 
-        y_pred = np.clip(y_pred,epsilon,1 - epsilon)
-        labels_indeks_True = np.arange(len(y))
-        Loss = -np.log(y_pred[labels_indeks_True,y])
-        out = np.mean(Loss)
-        outputs = GradientReflector(out,(self,),'sparse_categoricallcrossentropy')
         def _backward() :
-            grad = y_pred.copy()
-            grad[labels_indeks_True,y] -= 1
-            grad_ = grad / len(y)
-            self.gradient += grad_ * outputs.gradient
+            if y_pred.ndim <=2:
+                grad = y_pred.copy()
+                grad[labels_indeks_True,y] -= 1
+                grad_ = grad / len(y)
+                self.gradient += grad_ * outputs.gradient
+            else :
+                pred_tensor = y_pred.copy()
+                grad_n = np.zeros_like(pred_tensor)
+                for i in range(pred_tensor.shape[0]) :
+                    a = pred_tensor[i]
+                    a[cache[i],y[i]] -=1 
+                    grad_n += a / len(y[i])
+                self.gradient += grad_n * outputs.gradient 
         outputs._backwardpass = _backward
         return outputs 
     
     def meansquareerror (self,y_true) :
+        """
+            how to use
+            -----------
+            y_pred = its model predicted data, as usually its always Tensor for Engine grad\n 
+            y_true = the true of label datasets \n 
+            y_pred.meansquareerror(y_true)
+
+            Author
+            ----------
+            Candra Alpin Gunawan 
+        """
         if isinstance(y_true,GradientReflector) : 
             y = y_true.tensor 
         else : 
             y = y_true
         y_pred = self.tensor
         loss = np.mean(np.power((y_pred - y),2))
-        outputs = GradientReflector(loss,(self,),'mse')
+        if self.active_grad is True:
+            outputs = GradientReflector(loss,(self,),'mse')
+        else :
+            outputs = GradientReflector(loss,'mse')
+
         def _backward () :
             grad = (2/len(y)) * (y_pred - y)
             self.gradient += grad * outputs.gradient
@@ -503,13 +709,27 @@ class GradientReflector :
         return outputs
 
     def meanabsoluteerror (self,y_true) :
+        """
+            how to use
+            -----------
+            y_pred = its model predicted data, as usually its always Tensor for Engine grad\n 
+            y_true = the true of label datasets \n 
+            y_pred.meanabsoluteerror(y_true)
+
+            Author
+            ----------
+            Candra Alpin Gunawan 
+        """
         if isinstance(y_true,GradientReflector) : 
             y = y_true.tensor 
         else : 
             y = y_true 
         y_pred = self.tensor
         loss = np.mean(np.abs(y_pred - y))
-        outputs = GradientReflector(loss,(self,),'mae')
+        if self.active_grad is True:
+            outputs = GradientReflector(loss,(self,),'mae')
+        else :
+            outputs = GradientReflector(loss,_op='mae')
         def _backward() :
             grad =  (1/(len(y))) * np.sign(y_pred - y)
             self.gradient += grad * outputs.gradient
@@ -517,6 +737,17 @@ class GradientReflector :
         return outputs
     
     def hubber_loss (self,y_true,delta=1.0) : 
+        """
+            how to use
+            -----------
+            y_pred = its model predicted data, as usually its always Tensor for Engine grad\n 
+            y_true = the true of label datasets \n 
+            y_pred.hubber_loss(y_true)
+
+            Author
+            ----------
+            Candra Alpin Gunawan 
+        """
         if isinstance(y_true,GradientReflector) : 
             y = y_true.tensor 
         else : 
@@ -526,7 +757,10 @@ class GradientReflector :
         hub_loss = np.where(np.abs(loss) <= delta,0.5 * np.mean(np.power(loss,2)),
                             delta * (np.abs(loss) - (0.5 * delta)))
         hub_loss = np.mean(hub_loss)
-        outputs = GradientReflector(hub_loss,(self,),'huber_lost')
+        if self.active_grad is True :
+            outputs = GradientReflector(hub_loss,(self,),'huber_lost')
+        else :
+            outputs = GradientReflector(hub_loss,_op='huber_lost')
         def _backward() :
             grad = np.where(np.abs(loss) <= delta,loss,delta * np.sign(loss))
             self.gradient += grad * outputs.gradient
@@ -535,7 +769,10 @@ class GradientReflector :
 
     def sqrt(self) :
         x = self.tensor 
-        outputs = GradientReflector(np.sqrt(x),(self,),_op='sqrt')
+        if self.active_grad is True :
+            outputs = GradientReflector(np.sqrt(x),(self,),_op='sqrt')
+        else :
+            outputs = GradientReflector(np.sqrt(x),(self,),_op='sqrt')
         def backward() : 
             grad = 1 / (2 * np.sqrt(x))
             self.gradient += grad * outputs.gradient
@@ -545,7 +782,10 @@ class GradientReflector :
 
     def sum(self,axis=None,keepdims=False) :
         values = np.sum(self.tensor,axis=axis,keepdims=keepdims)
-        outputs = GradientReflector(values,(self,),'sum')
+        if self.active_grad is True :
+            outputs = GradientReflector(values,(self,),'sum')
+        else : 
+            outputs = GradientReflector(values,_op='sum')
         def _backward () :
             self.gradient += np.ones_like(self.tensor) * outputs.gradient
         outputs._backwardpass = _backward
@@ -554,7 +794,10 @@ class GradientReflector :
     def transpose(self,shape=()) :
         shape = shape 
         tensor = self.tensor
-        outputs = GradientReflector(np.transpose(tensor,axes=shape),(self,),'transpose')
+        if self.active_grad is True :
+            outputs = GradientReflector(np.transpose(tensor,axes=shape),(self,),'transpose')
+        else :
+            outputs = GradientReflector(np.transpose(tensor,axes=shape),_op='transpose')
         def _backward () :
             self.gradient = np.transpose(outputs.gradient,shape)
         outputs._backwardpass = _backward
@@ -562,7 +805,10 @@ class GradientReflector :
     
     def max(self,axis=None,keepdims=False) :
         out = np.max(self.tensor,axis=axis,keepdims=keepdims)
-        outputs = GradientReflector(out,(self,),'max')
+        if self.active_grad is True :
+            outputs = GradientReflector(out,(self,),'max')
+        else : 
+            outputs = GradientReflector(out,_op='max')
         def _backward() :
             masked = np.equal(self.tensor, np.max(self.tensor, axis=axis, keepdims=True)).astype(float)
 
@@ -575,10 +821,14 @@ class GradientReflector :
         return outputs 
     
     def variace(self,axis=None,keepdims=False) :
+        
         x = self.tensor 
         means = np.mean(x,axis=axis,keepdims=keepdims) 
         var = np.mean(np.power((x - means),2),axis=axis,keepdims=keepdims)
-        outputs = GradientReflector(var,(self,),'variance')
+        if self.active_grad is True:
+            outputs = GradientReflector(var,(self,),'variance')
+        else :
+            outputs = GradientReflector(var,_op='variance')
         def _backward() :
             N = x.size if axis is None else x.shape[axis]
             grad = (2 / N) * (x - means)
@@ -591,7 +841,10 @@ class GradientReflector :
         mean = np.mean(x,axis=axis,keepdims=keepdims)
         var = np.mean((x - mean)**2,axis=axis,keepdims=keepdims)
         std_vals = np.sqrt(var + epsilon)
-        outputs = GradientReflector(std_vals,(self,),'std')
+        if self.active_grad is True:
+            outputs = GradientReflector(std_vals,(self,),'std')
+        else :
+            outputs = GradientReflector(std_vals,_op='std')
         def _backward() :
             N = np.prod(x.shape) if axis is None else x.shape[axis]
             broadcast_mean = mean if axis is None else np.expand_dims(mean,axis=axis)
@@ -603,6 +856,18 @@ class GradientReflector :
         return outputs
 
     def layernormalization_backend(self, gamma, beta, epsilon=1e-6):
+        """
+            how to use it
+            --------------
+                x = GradientReflector([[2,3,4,2][9,2,3,4]])\n
+                gamma = np.ones((1,x.shape[-1]))\n
+                beta = np.zeros((1,x.shape))\n
+                x.layernormalization_backend(gamma,beta)
+            
+            Author
+            ---------
+             Candra Alpin Gunawan
+        """
         gamma = gamma if isinstance(gamma, GradientReflector) else GradientReflector(gamma)
         beta = beta if isinstance(beta, GradientReflector) else GradientReflector(beta)
         x = self.tensor
@@ -620,13 +885,17 @@ class GradientReflector :
             return dx_hat / std + dvar * 2.0 * x_mu / N + d_mean / N
             
         out = count_forward(x_mu=x_mu,std=std,gamma=gamma.tensor,beta= beta.tensor)
-        output = GradientReflector(out, (self, gamma, beta), 'layer_normal_backend')
+        if self.active_grad is True:
+            output = GradientReflector(out, (self, gamma, beta), 'layer_normal_backend')
+        else :
+            output = GradientReflector(out,_op= 'layer_normal_backend')
+
         def _backward():
             N = x.shape[-1]
             x_hat = x_mu / std 
             dy = output.gradient
             axes = tuple(range(output.gradient.ndim - 1))
-            beta.gradient += np.sum(dy,axis=(0,1))
+            beta.gradient += np.sum(dy,axis=axes)
             gamma.gradient += np.sum((dy * x_hat),axis=(0,1))
             dx_hat = dy * gamma.tensor
             d_var = np.sum(dx_hat * x_mu * -0.5 * std**-3,axis=-1,keepdims=True)
@@ -638,6 +907,18 @@ class GradientReflector :
         return output
 
     def bacthnormalization_backend(self,gamma,beta,epsilon=1e-6) :
+        """
+            how to use it
+            --------------
+                x = GradientReflector([[2,3,4,2][9,2,3,4]])\n
+                gamma = np.ones((1,x.shape[-1]))\n
+                beta = np.zeros((1,x.shape))\n
+                x.bacthnormalization_backend(gamma,beta)
+            
+            Author
+            ---------
+             Candra Alpin Gunawan
+        """
         gamma = gamma if isinstance(gamma,GradientReflector) else GradientReflector(gamma)
         beta = beta if isinstance(beta,GradientReflector) else GradientReflector(beta)
         x = self.tensor
@@ -657,7 +938,11 @@ class GradientReflector :
             return d_normal * std_inv + dvar * 2.0 * (x_mu/N) + (dmean/N)
 
         out = count_forward(x_mu= x_mu,std=std,gamma=gamma.tensor,beta=beta.tensor)
-        outputs = GradientReflector(out,(self,gamma,beta),'batch_normal_backend')
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,gamma,beta),'batch_normal_backend')
+        else :
+            outputs = GradientReflector(out,_op='batch_normal_backend')
+
         def _backward() :
             N = self.tensor.shape[0]
             x_mu = self.tensor - mean
@@ -800,7 +1085,10 @@ class GradientReflector :
         K = np.matmul(Keys.tensor,wk.tensor) + bk.tensor 
         V = np.matmul(Values.tensor,wv.tensor) + bv.tensor 
         attention,score,mask = scale_dot_product(Q,K,V,causal_mask=use_causal_mask)
-        outputs = GradientReflector(attention,(self,Keys,Values,wq,wk,wv,bq,bk,bv),"attention")
+        if self.active_grad is True :
+            outputs = GradientReflector(attention,(self,Keys,Values,wq,wk,wv,bq,bk,bv),"attention")
+        else :
+            outputs = GradientReflector(attention,_op="attention")
 
         def _backward() :
             key_dim = K.shape[-1]
@@ -981,7 +1269,10 @@ class GradientReflector :
         attention = np.transpose(attention,axes=(0,2,1,3))
         attention = np.reshape(attention,(batch,seq,dim))
         out = np.matmul(attention,wo.tensor) + bo.tensor
-        outputs = GradientReflector(out,(self,wq,wk,wv,wo,bq,bk,bv,bo),_op="MultiHeadAttention")
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,wq,wk,wv,wo,bq,bk,bv,bo),_op="MultiHeadAttention")
+        else :
+            outputs = GradientReflector(out,_op="MultiHeadAttention")
         
         def _backward() :
             grad_out = outputs.gradient
@@ -1059,7 +1350,10 @@ class GradientReflector :
         """
         x = self.tensor 
         out = np.mean(x,axis=axis,keepdims=keepdims)
-        outputs = GradientReflector(out,(self,),'globalaveragepooling')
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,),'globalaveragepooling')
+        else :
+            outputs = GradientReflector(out,_op='globalaveragepooling')
         def _backward() :
             if axis is None :
                 N = x.size 
@@ -1152,7 +1446,10 @@ class GradientReflector :
                 seq_out.append(h)
             return np.stack(seq_out,axis=1,dtype=np.float32)
         out = execution(x)
-        outputs = GradientReflector(out,(self,hidden_state,w_sequance,w_hidden_s,bias_),_op='SimpleRNN')
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,hidden_state,w_sequance,w_hidden_s,bias_),_op='SimpleRNN')
+        else :
+             outputs = GradientReflector(out,_op='SimpleRNN')
 
         def backward () :
             d_xhist = np.zeros_like(w_sequance.tensor,dtype=np.float32)
@@ -1208,8 +1505,10 @@ class GradientReflector :
         weight = weight if isinstance(weight,GradientReflector) else GradientReflector(weight,_op="weightembedding")
         x = self.tensor 
         out = weight.tensor[x]
-        outputs = GradientReflector(out,(self,weight),_op='embedding')
-        
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,weight),_op='embedding')
+        else :
+            outputs = GradientReflector(out,_op='embedding')
         def backward() :
             grad_weight = np.zeros_like(weight.tensor,dtype=np.float32)
             for i,token_id in enumerate(x.reshape(-1)) : 
@@ -1350,7 +1649,10 @@ class GradientReflector :
             c_state.append(cell_state.tensor)
             out.append(hidden_state.tensor)
         out = np.stack(out,axis=1)
-        outputs = GradientReflector(out,(self,hidden_state,cell_state,w_forgot,w_output,w_input,w_cell,b_forgot,b_output,b_input,b_cell),'LSTM')
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,hidden_state,cell_state,w_forgot,w_output,w_input,w_cell,b_forgot,b_output,b_input,b_cell),'LSTM')
+        else :
+            outputs = GradientReflector(out,_op='LSTM')
 
         def backward() :
             grad_out = outputs.gradient 
@@ -1535,9 +1837,11 @@ class GradientReflector :
             hidden_prev.append(hidden_state.tensor.copy())
             output.append(hidden_state.tensor)
         output = np.stack(output,axis=1)
-        
-        outputs = GradientReflector(output,(self,hidden_state,w_up_gate,w_re_gate,w_candidate_gate,b_up_gate,b_re_gate,b_candidate_gate),_op='GRU')
-
+        if self.active_grad is True:
+            outputs = GradientReflector(output,(self,hidden_state,w_up_gate,w_re_gate,w_candidate_gate,b_up_gate,b_re_gate,b_candidate_gate),_op='GRU')
+        else :
+            outputs = GradientReflector(output,_op='GRU')
+            
         def backward() :
             dw_up = np.zeros_like(w_up_gate.tensor,dtype=np.float32)
             dw_re = np.zeros_like(w_re_gate.tensor,dtype=np.float32)
@@ -1663,7 +1967,10 @@ class GradientReflector :
         bias = bias if isinstance(bias,GradientReflector) else GradientReflector(bias,_op='Dense_Bias')
 
         out = np.matmul(x,weight.tensor) + bias.tensor 
-        outputs = GradientReflector(out,(self,weight,bias),_op='Dense')
+        if self.active_grad is True:
+            outputs = GradientReflector(out,(self,weight,bias),_op='Dense')
+        else :
+            outputs = GradientReflector(out,_op='Dense')
 
         def _backward() : 
             out_grad = outputs.gradient 
@@ -1695,6 +2002,19 @@ class GradientReflector :
         
         outputs._backwardpass = _backward
         return outputs 
+
+
+    def expand_dims (self,axis) :
+        x = self.tensor 
+        out = np.expand_dims(x,axis=axis)
+        outputs = GradientReflector(out,(self,),'add_dims')
+        
+        def _backward() :
+            grad = outputs.gradient
+            self.gradient +=np.reshape(grad,x.shape) 
+        
+        outputs._backwardpass = _backward
+        return outputs
             
 
 
@@ -1826,6 +2146,9 @@ class GradientReflector :
                 self.___Auto_gradient_exploaded_Detector(node.get_gradient())
                 node.gradient = self.___Auto_GradientClipping(node.get_gradient())
             _is_not_last_node = True
+        topo.clear()
+        visited.clear() 
+
     
     def kill_grad (self) :
         """
@@ -1861,6 +2184,9 @@ class GradientReflector :
         self.gradient = np.zeros_like(self.tensor,dtype=self.dtype)
         for n in topo :
             n.gradient = np.zeros_like(n.tensor,dtype=self.dtype)
+        topo.clear()
+        visited.clear() 
+
                
     def plot_trace_operation (self) :
         """
@@ -1894,3 +2220,4 @@ class GradientReflector :
         nx.draw(G,pos,with_labels=True,labels=labels,node_color = 'lightblue',arrows=True)
         plt.title("Gradient Reflector tracked graph operation")
         plt.show()
+    

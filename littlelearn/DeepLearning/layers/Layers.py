@@ -1064,6 +1064,7 @@ class LSTM :
     
     def __build_weight (self,features) :
         try :
+            He_var = features
             features += self.units
             if self.units is None or self.units == 0:
                 raise ValueError ("0 / None units is disagreed for layers")
@@ -1071,13 +1072,13 @@ class LSTM :
             if self.weight_initial not in ['normal','uniform'] :
                 raise ValueError("The initial methods not available at layers")
             if self.weight_initial == 'normal' :
-                normal_variance = np.sqrt(2/(features + self.units))
+                normal_variance = np.sqrt(2/(He_var))
                 self.weight_forgot_gate = np.random.normal(loc=0,scale=normal_variance,size=(features,self.units))
                 self.weight_new_information_gate = np.random.normal(loc=0,scale=normal_variance,size=(features,self.units))
                 self.weight_output_gate = np.random.normal(loc=0,scale=normal_variance,size=(features,self.units))
                 self.weight_cell_state = np.random.normal(loc=0,scale=normal_variance,size=(features,self.units))
             elif self.weight_initial == 'uniform' :
-                uniform_variance = np.sqrt(6 / (features + self.units))
+                uniform_variance = np.sqrt(6 / (He_var))
                 self.weight_forgot_gate = np.random.uniform(low=-uniform_variance,high=uniform_variance,size=(features,self.units))
                 self.weight_new_information_gate = np.random.uniform(low=-uniform_variance,high = uniform_variance,size=(features,self.units))
                 self.weight_output_gate = np.random.uniform(low=-uniform_variance,high=uniform_variance,size=(features,self.units))
@@ -1218,9 +1219,10 @@ class GRU :
                 raise RuntimeError("initial bias methode just availabel for zeros and random")
             if self.units <= 0 or self.units is None  :
                 raise RuntimeError("The units can't if is 0 or None")
+            He_Var = features 
             features += self.units
-            normal_variance = np.sqrt(2 / (features + self.units))
-            uniform_variance = np.sqrt(6 / (features + self.units))
+            normal_variance = np.sqrt(2 / (He_Var))
+            uniform_variance = np.sqrt(6 / (He_Var))
             if self.initial_weight == 'normal':
                 self.weight_up_gate = np.random.normal(loc=0,scale=normal_variance,size=(features,self.units))
                 self.weight_re_gate = np.random.normal(loc=0,scale=normal_variance,size=(features,self.units))
