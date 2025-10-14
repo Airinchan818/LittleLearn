@@ -193,7 +193,7 @@ class MaxAbsoluteScaller :
             traceback.print_exception(type(e),e,e.__traceback__)
             raise 
     
-    def fit_scalling (self,x) :
+    def fit_scaling (self,x) :
         self.fit(x) 
         return x / self.max_abs
     
@@ -351,6 +351,8 @@ class LabelEncoder :
                 enc = LabelEncoder()
                 enc.fit_encod(data)
         """
+        self.fit(data)
+        return self.encod(data)
 
 
 class OneHotEncoder :
@@ -439,3 +441,4 @@ def label_to_onehot (x,class_num:int) :
         vector[data] = 1 
         result.append(vector)
     return np.array(result)
+

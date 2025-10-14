@@ -1,5 +1,6 @@
 from littlelearn.DeepLearning import optimizers,activations,layers
 import littlelearn as ll 
+from typing import Literal
 
 class Feed_forward :
     """
@@ -77,7 +78,8 @@ class BlockEncoder_MHA:
     
     """
 
-    def __init__(self, num_head: int, d_model: int, ffn: int):
+    def __init__(self, num_head: int, d_model: int, ffn: int,
+                 NormMode  : Literal['postnorm','prenorm'] = 'postnorm'):
         """
         Initialize the encoder block layers.
 
@@ -85,10 +87,12 @@ class BlockEncoder_MHA:
             num_head (int): Number of attention heads.
             d_model (int): Dimensionality of the model (hidden size).
             ffn (int): Dimensionality of the feed-forward layer.
+            NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
         """
         self.num_head = num_head
         self.d_model = d_model
         self.ffn = ffn
+        self.Normode = NormMode
 
         self.Multihead_Attention = layers.MultiHeadAttention(
             units=self.d_model, 
@@ -128,15 +132,26 @@ class BlockEncoder_MHA:
         Returns:
             Tensor: Output tensor after self-attention and feed-forward network.
         """
+        if self.Normode == 'prenorm' : 
+            attnnorm = self.normal1(x) 
+            attn = self.Multihead_Attention(attnnorm,attnnorm,attnnorm)
+            attn = attn + x 
 
-        attn = self.Multihead_Attention(x, x, x)
-        attn = self.normal1(attn + x)
+            ffnNorm = self.normal2(attn)
+            ffn = self.feed_forward(ffnNorm)
+            ffn = ffn + attn
+            return ffn
+        elif self.Normode == 'postnorm' :
+
+            attn = self.Multihead_Attention(x, x, x)
+            attn = self.normal1(attn + x)
 
 
-        ffn = self.feed_forward(attn)
-        ffn = self.normal2(ffn + attn)
-
-        return ffn
+            ffn = self.feed_forward(attn)
+            ffn = self.normal2(ffn + attn)
+            return ffn
+        else :
+            raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
 class BlockDecoder_MHA_cross:
     """
@@ -165,7 +180,8 @@ class BlockDecoder_MHA_cross:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, num_head: int, d_model: int, ffn: int):
+    def __init__(self, num_head: int, d_model: int, ffn: int,
+                 NormMode  : Literal['postnorm','prenorm'] = 'postnorm'):
         """
         Initialize the decoder block layers.
 
@@ -173,10 +189,12 @@ class BlockDecoder_MHA_cross:
             num_head (int): Number of attention heads.
             d_model (int): Dimensionality of the model (hidden size).
             ffn (int): Dimensionality of the feed-forward layer.
+            NormMode (optional) : Normalization mode, either 'postnorm' or 'prenorm'.
         """
         self.num_head = num_head
         self.d_model = d_model
         self.ffn = ffn
+        self.Normode = NormMode
 
 
         self.feed_forward = Feed_forward(
@@ -239,18 +257,34 @@ class BlockDecoder_MHA_cross:
             Tensor: Output tensor after self-attention, cross-attention, 
                     and feed-forward network.
         """
+        if self.Normode == 'prenorm' :
+            attnnorm1 = self.normal1(x) 
+            attn1 = self.MultiHead_attn(attnnorm1,attnnorm1,attnnorm1)
+            attn1 = attn1 + x
 
-        attn = self.MultiHead_attn(x, x, x)
-        attn = self.normal1(attn + x)
+            attnnorm2 = self.normal2(cross_attn)
+            attncross = self.MultiHead_attn2(attn1,attnnorm2,attnnorm2)
+            attncross = attncross + attn1
+
+            ffn = self.normal3(attncross)
+            ffn = self.feed_forward(ffn)
+            ffn = ffn + attncross
+            return ffn 
+        elif self.Normode == 'postnorm' :
+            attn = self.MultiHead_attn(x, x, x)
+            attn = self.normal1(attn + x)
 
 
-        cross = self.MultiHead_attn2(attn, cross_attn, cross_attn)
-        cross = self.normal2(cross + attn)
+            cross = self.MultiHead_attn2(attn, cross_attn, cross_attn)
+            cross = self.normal2(cross + attn)
 
-        ffn = self.feed_forward(cross)
-        ffn = self.normal3(ffn + cross)
+            ffn = self.feed_forward(cross)
+            ffn = self.normal3(ffn + cross)
 
-        return ffn
+            return ffn
+        else : 
+            raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
+        
 
 
 class BlockEncoder_Attention:
@@ -267,6 +301,7 @@ class BlockEncoder_Attention:
     Args:
         d_model (int): Dimensionality of the model (hidden size).
         ffn_dim (int): Dimensionality of the feed-forward layer.
+        NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
     
     Example
     -------------
@@ -278,7 +313,8 @@ class BlockEncoder_Attention:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, d_model: int, ffn_dim: int):
+    def __init__(self, d_model: int, ffn_dim: int,
+                 NormMode: Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initialize the encoder block layers.
 
@@ -288,6 +324,7 @@ class BlockEncoder_Attention:
         """
         self.d_model = d_model
         self.ffn = ffn_dim
+        self.NormMode = NormMode
 
 
         self.feed_forward = Feed_forward(
@@ -333,15 +370,27 @@ class BlockEncoder_Attention:
         Returns:
             Tensor: Output tensor after attention and feed-forward network.
         """
+        if self.NormMode == 'prenorm' :
+            attnnorm = self.normal1(x)
+            attn = self.Attention(attnnorm, attnnorm, attnnorm)
+            attn = attn + x
 
-        attn = self.Attention(x, x, x)
-        attn = self.normal1(attn)
+            ffnNorm = self.normal2(attn)
+            ffn = self.feed_forward(ffnNorm)
+            ffn = ffn + attn
+            return ffn
+        elif self.NormMode == 'postnorm' :
+
+            attn = self.Attention(x, x, x)
+            attn = self.normal1(attn)
 
 
-        ffn = self.feed_forward(attn)
-        ffn = self.normal2(ffn + attn)
+            ffn = self.feed_forward(attn)
+            ffn = self.normal2(ffn + attn)
 
-        return ffn
+            return ffn
+        else :
+            raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
 class BlockDecoders_Attention_cross:
     """
@@ -359,6 +408,7 @@ class BlockDecoders_Attention_cross:
     Args:
         d_model (int): Dimensionality of the model (hidden size).
         ffn_dim (int): Dimensionality of the feed-forward network.
+        NormMode(optional): Normalization mode, either 'postnorm' or 'prenorm'.
     
     Example
     ---------
@@ -370,7 +420,8 @@ class BlockDecoders_Attention_cross:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, d_model: int, ffn_dim: int):
+    def __init__(self, d_model: int, ffn_dim: int,
+                 NormMode : Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initialize the decoder block layers.
 
@@ -380,6 +431,7 @@ class BlockDecoders_Attention_cross:
         """
         self.d_model = d_model
         self.ffn = ffn_dim
+        self.NormMode = NormMode
 
         self.feed_forward = Feed_forward(
             d_model=d_model,
@@ -437,17 +489,33 @@ class BlockDecoders_Attention_cross:
         Returns:
             Tensor: Output tensor after attention layers and feed-forward network.
         """
+        if self.NormMode == 'prenorm' :
+            attnnorm1 = self.normal1(x)
+            attn1 = self.Attention1(attnnorm1, attnnorm1, attnnorm1)
+            attn1 = attn1 + x
 
-        attn = self.Attention1(x, x, x)
-        attn = self.normal1(attn + x)
+            attnnorm2 = self.normal2(cross_attn)
+            attncross = self.Attention2(attn1, attnnorm2, attnnorm2)
+            attncross = attncross + attn1
 
-        cross = self.Attention2(attn, cross_attn, cross_attn)
-        cross = self.normal2(cross + attn)
+            ffnNorm = self.normal3(attncross)
+            ffn = self.feed_forward(ffnNorm)
+            ffn = ffn + attncross
+            return ffn
+        elif self.NormMode == 'postnorm' :
+            attn = self.Attention1(x, x, x)
+            attn = self.normal1(attn + x)
 
-        ffn = self.feed_forward(cross)
-        ffn = self.normal3(ffn + cross)
+            cross = self.Attention2(attn, cross_attn, cross_attn)
+            cross = self.normal2(cross + attn)
 
-        return ffn
+            ffn = self.feed_forward(cross)
+            ffn = self.normal3(ffn + cross)
+
+            return ffn
+        else :
+            raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
+        
 
 class BlockDecoder_MHA:
     """
@@ -464,6 +532,7 @@ class BlockDecoder_MHA:
         num_head (int): Number of attention heads.
         d_model (int): Dimensionality of the model (hidden size).
         ffn (int): Dimensionality of the feed-forward layer.
+        NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
     
     Example
     ----------
@@ -475,7 +544,8 @@ class BlockDecoder_MHA:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, num_head: int, d_model: int, ffn: int):
+    def __init__(self, num_head: int, d_model: int, ffn: int,
+                 NormMode : Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initialize the decoder block layers.
 
@@ -487,6 +557,7 @@ class BlockDecoder_MHA:
         self.num_head = num_head
         self.d_model = d_model
         self.ffn = ffn
+        self.NormMode = NormMode
 
         self.feed_forward = Feed_forward(
             self.d_model,
@@ -536,15 +607,27 @@ class BlockDecoder_MHA:
             Tensor: Output tensor after masked multi-head self-attention 
                     and feed-forward network.
         """
- 
-        attn = self.MultiHead_attn(x, x, x)
-        attn = self.normal1(attn + x)
+        if self.NormMode == 'prenorm' :
+            attnnorm = self.normal1(x)
+            attn = self.MultiHead_attn(attnnorm, attnnorm, attnnorm)
+            attn = attn + x
+
+            ffnNorm = self.normal2(attn)
+            ffn = self.feed_forward(ffnNorm)
+            ffn = ffn + attn
+            return ffn
+        elif self.NormMode == 'postnorm' :
+    
+            attn = self.MultiHead_attn(x, x, x)
+            attn = self.normal1(attn + x)
 
 
-        ffn = self.feed_forward(attn)
-        ffn = self.normal2(ffn + attn)
+            ffn = self.feed_forward(attn)
+            ffn = self.normal2(ffn + attn)
 
-        return ffn
+            return ffn
+        else : 
+            raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
 class BlockDecoder_attention:
     """
@@ -572,16 +655,19 @@ class BlockDecoder_attention:
     Candra Alpin Gunawan
     """
 
-    def __init__(self, d_model, ffn_dim):
+    def __init__(self, d_model : int, ffn_dim : int,
+                 NormMode : Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initializes the decoder block.
 
         Args:
             d_model (int): Dimension of the model embeddings.
-            ffn_dim (int): Dimension of the feed-forward network.
+            ffn_dim (int): Dimension of the feed-forward network.,
+        NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
         """
         self.d_model = d_model
         self.ffn = ffn_dim
+        self.NormMode = NormMode
         
 
         self.feed_forward = Feed_forward(self.d_model, ffn_dim=self.ffn)
@@ -626,12 +712,24 @@ class BlockDecoder_attention:
         Returns:
             tensor: Output tensor after attention and feed-forward layers.
         """
+        if self.NormMode == 'prenorm' :
+            attnnorm = self.normal1(x)
+            attn = self.Attention(attnnorm, attnnorm, attnnorm)
+            attn = attn + x
+
+            ffnNorm = self.normal2(attn)
+            ffn = self.feed_forward(ffnNorm)
+            ffn = ffn + attn
+            return ffn
+        elif self.NormMode == 'postnorm' :
         
-        attn = self.Attention(x, x, x)
-        attn = self.normal1(attn + x)
+            attn = self.Attention(x, x, x)
+            attn = self.normal1(attn + x)
 
-        ffn = self.feed_forward(attn)
-        ffn = self.normal2(ffn + attn)
+            ffn = self.feed_forward(attn)
+            ffn = self.normal2(ffn + attn)
 
-        return ffn
+            return ffn
+        else : 
+            raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 

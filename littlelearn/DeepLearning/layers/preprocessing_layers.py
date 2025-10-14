@@ -156,3 +156,69 @@ class GlobalAveragePooling1D :
         
     def get_weight(self) :
         return None 
+
+class DropOut :
+    """
+    DropOut Layer
+    --------------------
+    Non-trainable regularization layer that randomly disables a fraction of
+    input neurons during training to prevent overfitting.
+
+    This layer multiplies the input tensor `x` by a binary mask `m` sampled
+    from a Bernoulli distribution with probability `(1 - rate)` of keeping
+    each unit active. The output is scaled by `1 / (1 - rate)` to preserve
+    the expected activation magnitude.
+
+    Formula (forward):
+        out = (m * x) / (1 - rate)
+
+    Formula (backward):
+        grad_input = (m / (1 - rate)) * grad_output
+
+    Parameters
+    ----------
+    rate : float, default=0.1
+        Fraction of the input neurons to drop. Must be between 0 and 1.
+        Example: rate=0.2 means 20% of the neurons are disabled.
+
+    Attributes
+    ----------
+    out_shape : tuple or None
+        Shape of the output tensor after dropout is applied.
+
+    Methods
+    -------
+    __call__(x)
+        Applies dropout to the input tensor during training.
+    get_weight()
+        Returns None, since Dropout has no trainable weights.
+
+    Notes
+    -----
+    - Dropout is active only during training. During inference, all neurons
+      are kept active (mask m = 1), so the layer behaves as an identity map.
+    - It is a stochastic regularizer; thus repeated calls with the same input
+      may yield different outputs during training.
+
+    Example
+    -------
+    >>> layer = DropOut(rate=0.3)
+    >>> y = layer(x)  # Applies dropout mask
+
+    Author:
+    ---------
+    Candra Alpin Gunawan 
+    """
+    def __init__ (self,rate : float = 0.1) :
+        self.rate = rate 
+        self.out_shape = None 
+    
+    def __call__ (self,x) :
+        if not isinstance(x,ll.GradientReflector) :
+            x = ll.convert_to_tensor(x)
+        out = x.drop_out_backend(rate = self.rate)
+        self.out_shape = out.shape
+        return out 
+    
+    def get_weight(self) :
+        return None 

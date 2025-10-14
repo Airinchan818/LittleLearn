@@ -43,9 +43,9 @@ Candra Alpin Gunawan
 """
 __name__ = "littlelearn"
 __author__ = "Candra Alpin Gunawan"
-__version__ = "0.1.6"
+__version__ = "0.1.9"
 __license__ = "Apache 2.0"
-__realese__ = "25-August-2025"
+__realese__ = "14-october-2025"
 __email__ = "hinamatsuriairin@gmail.com"
 __repo__ = "https://github.com/Airinchan818/LittleLearn"
 __youtube__ = "https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY"
@@ -55,6 +55,7 @@ from . import ClassicMachineLearning
 from . import preprocessing
 from .GradientReflector import GradientReflector
 from .GradientReflector import non_active_grad
+from . import GradientTools
 
 def convert_to_tensor(x) :
 
@@ -231,4 +232,5 @@ def expand_dims (x,axis) :
 
 def arange_tensor (stop) :
     from numpy import arange
-    return GradientReflector(arange(stop))
+    from numpy import int32
+    return GradientReflector(arange(stop),_dtype=int32)

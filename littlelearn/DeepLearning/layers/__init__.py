@@ -15,3 +15,5 @@ from .Transformers_part import BlockDecoders_Attention_cross
 from .Transformers_part import Feed_forward 
 from .Transformers_part import BlockEncoder_Attention
 from .Transformers_part import BlockEncoder_MHA
+from .Layers import LatenConnectedBlock
+from .preprocessing_layers import DropOut

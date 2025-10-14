@@ -140,7 +140,7 @@ class Sequential :
                 self.loss_val = self.__loss(y,y_pred)
                 self.__loss_record.append(self.loss_val.tensor)
                 if verbose == 1 :
-                    print(f"epoch {epoch + 1} || loss : {self.loss_val.tensor:.5f}")
+                    print(f"epoch {epoch + 1} / {epochs}|| loss : {self.loss_val.tensor:.5f}")
                 self.loss_val.AutoClipGradient()
                 self.loss_val.backwardpass()
                 self.__run_optimizer()
@@ -814,3 +814,7 @@ class AutoBuildModel :
     def plot_graph_execution(self) :
         if isinstance(self.__model,Sequential) : 
             self.__model.plot_graph_execution()
+    
+    def get_weight(self) :
+        if isinstance(self.__model,Sequential) :
+            return self.__model.get_weight()

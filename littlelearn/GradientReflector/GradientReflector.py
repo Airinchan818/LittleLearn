@@ -6,6 +6,7 @@ from typing import Literal
 from numba import jit
 import gc
 from contextlib import contextmanager
+import weakref
 
 active_grad_status = True
 
@@ -105,7 +106,7 @@ class GradientReflector :
         self.gradient =  np.zeros_like(self.tensor,dtype=_dtype)
         self.active_grad = active_grad_status
         self._backwardpass = lambda : None 
-        self._Node = _children
+        self._Node = [weakref.ref(child) for child in _children]
         self._op = _op 
         self.__grad_expload_signal = None
         self.__norm_signal = None 
@@ -592,6 +593,7 @@ class GradientReflector :
         y_pred = np.clip(y_pred,epsilon,1-epsilon)
         if y_pred.ndim <= 2 :
             loss = -np.sum((y) * np.log(y_pred))
+            loss = np.mean(loss)
         else : 
             loss = list()
             for i in range(y_pred.shape[0]) :
@@ -604,7 +606,7 @@ class GradientReflector :
             outputs = GradientReflector(loss,_op='categoricall_crossentropy')
         def _backward () :
             if y_pred.ndim <= 2:
-                grad = (y_pred - y) / len(y) 
+                grad = (y_pred - y) / y.shape[0]
             else :
                 grad = list()
                 for i in range(y_pred.shape[0]) :
@@ -696,15 +698,29 @@ class GradientReflector :
         else : 
             y = y_true
         y_pred = self.tensor
-        loss = np.mean(np.power((y_pred - y),2))
+        
+        if y_pred.ndim > 2 :
+            loss = 0 
+            for i in range(y_pred.shape[0]) :
+                loss += np.mean(np.power((y_pred[i] - y[i]),2))
+            loss = np.mean(loss)
+        else :
+            loss = np.mean(np.power((y_pred - y),2))
         if self.active_grad is True:
             outputs = GradientReflector(loss,(self,),'mse')
         else :
             outputs = GradientReflector(loss,'mse')
 
         def _backward () :
-            grad = (2/len(y)) * (y_pred - y)
-            self.gradient += grad * outputs.gradient
+            if y_pred.ndim <=2 :
+                grad = (2/len(y)) * (y_pred - y)
+                self.gradient += grad * outputs.gradient
+            else :
+                grad = np.zeros_like(self.gradient)
+                for i in range(y_pred.shape[0]) :
+                    grad += (2/len(y[i])) * (y_pred[i] - y[i])
+                self.gradient += grad * outputs.gradient
+
         outputs._backwardpass = _backward
         return outputs
 
@@ -725,14 +741,27 @@ class GradientReflector :
         else : 
             y = y_true 
         y_pred = self.tensor
-        loss = np.mean(np.abs(y_pred - y))
+        if y_pred.ndim > 2 :
+            loss = 0 
+            for i in range(y_pred.shape[0]) :
+                loss += np.mean(np.abs(y_pred[i] - y[i]))
+            loss = np.mean(loss)
+        else :
+            loss = np.mean(np.abs(y_pred - y))
         if self.active_grad is True:
             outputs = GradientReflector(loss,(self,),'mae')
         else :
             outputs = GradientReflector(loss,_op='mae')
         def _backward() :
-            grad =  (1/(len(y))) * np.sign(y_pred - y)
-            self.gradient += grad * outputs.gradient
+            if y_pred.ndim <= 2 :    
+                grad =  (1/(len(y))) * np.sign(y_pred - y)
+                self.gradient += grad * outputs.gradient
+            else :
+                grad = np.zeros_like(self.gradient)
+                for i in range(y_pred.shape[0]) :
+                    grad += (1/(len(y[i]))) * np.sign(y_pred[i] - y[i])
+                self.gradient += grad * outputs.gradient
+
         outputs._backwardpass = _backward
         return outputs
     
@@ -753,17 +782,33 @@ class GradientReflector :
         else : 
             y = y_true 
         y_pred = self.tensor
-        loss = y_pred - y
-        hub_loss = np.where(np.abs(loss) <= delta,0.5 * np.mean(np.power(loss,2)),
-                            delta * (np.abs(loss) - (0.5 * delta)))
-        hub_loss = np.mean(hub_loss)
+        if y_pred.ndim > 2 :
+            loss = 0 
+            for i in range(y_pred.shape[0]) : 
+                lt = y_pred[i] - y[i]
+                hb_t = np.where(np.abs(lt)<= delta, 0.5 * np.mean(np.power(lt,2)),
+                                    delta * (np.abs(lt) - (0.5 * delta)))
+                loss +=hb_t
+            hub_loss = np.mean(loss)
+        else:
+            loss = y_pred - y
+            hub_loss = np.where(np.abs(loss) <= delta,0.5 * np.mean(np.power(loss,2)),
+                                delta * (np.abs(loss) - (0.5 * delta)))
+            hub_loss = np.mean(hub_loss)
         if self.active_grad is True :
-            outputs = GradientReflector(hub_loss,(self,),'huber_lost')
+            outputs = GradientReflector(hub_loss,(self,),'huber_loss')
         else :
-            outputs = GradientReflector(hub_loss,_op='huber_lost')
+            outputs = GradientReflector(hub_loss,_op='huber_loss')
         def _backward() :
-            grad = np.where(np.abs(loss) <= delta,loss,delta * np.sign(loss))
-            self.gradient += grad * outputs.gradient
+            if y_pred.ndim > 2 :
+                grad = np.zeros_like(self.gradient)
+                for i in range(y_pred.shape[0]) :
+                    loss = y_pred[i] - y[i]
+                    grad += np.where(np.abs(loss) <= delta,loss,delta * np.sign(loss))
+                self.gradient += grad * outputs.gradient
+            else :
+                grad = np.where(np.abs(loss) <= delta,loss,delta * np.sign(loss))
+                self.gradient += grad * outputs.gradient
         outputs._backwardpass = _backward
         return outputs 
 
@@ -2015,7 +2060,43 @@ class GradientReflector :
         
         outputs._backwardpass = _backward
         return outputs
+    
+    def drop_out_backend(self,rate : float = 0.1) : 
+
+        """
+            drop out backend:
+            -------------
+            backend for drop out layers in DeepLearning.layers.Dropout, but you can 
+            use it for general tensor too. 
+
+            parameters:
+            -------------
+                rate: float
+                    drop rate to look how many drop values for neuron 
             
+            how to use:
+            --------------
+                x.drop_out_backend()
+            
+            return:
+            ---------
+            outputs : GradientReflector Tensor 
+
+            Author: Candra Alpin Gunawan 
+        """
+        x = self.tensor
+        p = 1 - rate
+        m = np.random.binomial(1,p, size=(x.shape))
+        drop_out = m * x / p
+        outputs = GradientReflector(drop_out,(self,),_op='dropout')
+
+        def backward() :
+            out_grad = outputs.gradient 
+            grad = m/p * out_grad
+            self.gradient += grad 
+        
+        outputs._backwardpass = backward
+        return outputs
 
 
     @property 
@@ -2129,25 +2210,32 @@ class GradientReflector :
 
             Written by : Candra Alpin Gunawan 
         """
-        topo = list()
+        topo = []
         visited = set()
-        def build_topo (v):        
-            if v not in visited :
+
+        def build_topo(v):
+            if v not in visited:
                 visited.add(v)
-                for child in v._Node :
-                    build_topo(child)
+                for child_ref in v._Node:
+                    child = child_ref()
+                    if child is not None:
+                        build_topo(child)
                 topo.append(v)
+
         build_topo(self)
-        self.gradient = np.ones_like(self.tensor,dtype=self.dtype)
+
+        self.gradient = np.ones_like(self.tensor, dtype=self.dtype)
+
         _is_not_last_node = False
-        for node in reversed(topo) :
+        for node in reversed(topo):
             node._backwardpass()
-            if self.__auto_clip is True and _is_not_last_node is True:
+            if self.__auto_clip and _is_not_last_node:
                 self.___Auto_gradient_exploaded_Detector(node.get_gradient())
                 node.gradient = self.___Auto_GradientClipping(node.get_gradient())
             _is_not_last_node = True
+
         topo.clear()
-        visited.clear() 
+        visited.clear()
 
     
     def kill_grad (self) :
@@ -2172,21 +2260,29 @@ class GradientReflector :
             
         """
 
-        topo = list()
-        visited = set() 
-        def build_topo (visit) :
-            if visit not in visited :
-                visited.add(visit)
-                for child in visit._Node :
-                    build_topo(child)
-                topo.append(visit)
-        build_topo(self)
-        self.gradient = np.zeros_like(self.tensor,dtype=self.dtype)
-        for n in topo :
-            n.gradient = np.zeros_like(n.tensor,dtype=self.dtype)
-        topo.clear()
-        visited.clear() 
+        topo = []
+        visited = set()
 
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for child_ref in v._Node:
+                    child = child_ref()
+                    if child is not None:
+                        build_topo(child)
+                topo.append(v)
+
+        build_topo(self)
+
+        for node in topo:
+            node.gradient = np.zeros_like(node.tensor, dtype=node.dtype)
+        
+        for node in topo :
+            node._Node.clear()
+            node._backwardpass = lambda: None
+
+        topo.clear()
+        visited.clear()
                
     def plot_trace_operation (self) :
         """
@@ -2211,8 +2307,9 @@ class GradientReflector :
                 visited.add(Node)
                 G.add_node(id(Node),label=Node._op)
                 for parent in Node._Node :
-                    G.add_edge(id(parent),id(Node))
-                    build(parent)
+                    p = parent() 
+                    G.add_edge(id(p),id(Node))
+                    build(p)
 
         build(self)
         labels = nx.get_node_attributes(G,'label')

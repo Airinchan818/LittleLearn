@@ -1,19 +1,18 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (0.1.6) date : (25-August-2025):
-
-    - Gradient Vanishing at LSTM bug fixed 
-    - Gradient Vanishing at GRU bug fixed 
-    - mismatch backwardpas Multiple bug fixed 
-    - SparseCategoricallCrossentropy suport Multi output 
-    - CategoricallCrossentropy suport Multi output 
-    - AutoTransformers is aivable now for NLP 
-    - add new funtion expand_dims 
-    - update new preprocessing tools LabelEncoder,OneHotEncoder,label_to_onehot
-    - update new Model AutoBuildModel => LSTM,GRU Models Sentiment Regression with Tanh
-    - update new layers BlockEncoder and BlockDecoder for make Transformers model more easy
-    - update new layers Feed Forward Network for make Transformers models more easy 
-    - add in line Documentation at Grad Engine for Layers Backend and loss function
+update Version (0.1.9) date : (14-october-2025) : 
+        - get_weight bug fixed on AutoTransformers 
+        - update add option "PreNorm and PostNorm" on BlockTransformers 
+        - update add option "PreNorm And PostNorm" on AutoTransformers 
+        - update add Deep level for Decoder crossAttention in AutoTransformers 
+        - update Hubber loss support multi output regression 
+        - update Mean Absolute Error support multi outputs regression
+        - update Mean Squared Error support multi outputs regression  
+        - update new Layers LatenConnected Layers 
+        - update new Model variant LatenConnectedModel (5,8,12,16) block stacking. 
+        - update Gradient Clipper Tools (clip by norm, clip by values, clip by global) 
+        - update new Module Gradient Tools for look gradient interaction
+        - update new layers DropOut  
 
 
 LittleLearn is an experimental and original machine learning framework built from scratch — inspired by the simplicity of Keras and the flexibility of PyTorch, yet designed with its own architecture, philosophy, and gradient engine.
@@ -113,6 +112,8 @@ It is suitable for:
 - 🔧 Custom low-level operations
 
 This is an Beta-stage project — expect bugs, sharp edges, and lots of potential.
+
+suport this project : https://ko-fi.com/alpin92578
 
 👤 Author
 Candra Alpin Gunawan

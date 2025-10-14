@@ -324,7 +324,7 @@ class Attention :
         self.derivative_mode = derivative_func
         self.use_engine_grad = use_Gradient_Reflector
         self.stop_jacobian = stop_jacobian
-        self.name = self.__class__.name
+        self.name = self.__class__.__name__
         self.out_shape = None 
     
     def __alternative_Derivative_softmax(self,softmax_out,grad_scores) :
@@ -974,7 +974,7 @@ class SimpleRNN :
                 raise ValueError("0 is disagreed for layers") 
             scales_Variance = np.sqrt(2 / features)
             self.weight_sequence = np.random.normal(loc=0,scale=scales_Variance,size=(features,self.units))
-            self.weight_hidden = np.random.normal(loc=0,scale=scales_Variance,size=(self.units,self.units))
+            self.weight_hidden = np.random.normal(loc=0,scale=scales_Variance,size=(features,self.units))
             self.bias = np.zeros((1,self.units))
             self.weight_sequence = ll.GradientReflector(self.weight_sequence,_op='weightrnn')
             self.weight_hidden = ll.GradientReflector(self.weight_hidden,_op='weighthidden_s')
@@ -1298,3 +1298,100 @@ class GRU :
                              return_state=self.return_hidden_state)
         self.out_shape = out.shape 
         return out
+
+class LatenConnectedBlock :
+    """
+        submodel block for Laten Connected Model (LCM) Layer
+        -----------------------------------------------------
+            LatenConnectedModel is experimental model for look laten 
+            relatation with relavan values by step1 and step2 in sigmoid activation. 
+            this model created to solving loss context, big resource problem from RNN model
+            and resource hungry from transformers Model. 
+            
+            Laten Connected Model look at both step1 and step2 to find relavan values. 
+            and look relavan values with Tanh activation as relavan magnitude with do residural 
+            connection with input layers.
+        
+
+            Parameters:
+            
+            - units : int  
+                Number of neurons in the dense layer.
+            - NormMode : (Optional)
+                'prenorm' or 'postnorm' (default: 'postnorm')
+            - LatenActivation : (Optional)
+                'sigmoid','gelu','swish' (default: 'sigmoid')
+            
+            Author:
+            
+            Candra Alpin Gunawan 
+    """
+    def __init__(self,units : int,
+                 NormMode : Literal['prenorm','postnorm'] = 'postnorm',
+                 laten_activation : Literal['sigmoid','gelu','swish'] = 'sigmoid') :
+        self.step1_layers = Dense(units)
+        self.step2_layers = Dense(units)
+        self.magnitude_layers = Dense(units)
+        self.norm = ll.DeepLearning.layers.LayerNormalization()
+
+        self.NormMode = NormMode
+        self.latenactivation = laten_activation
+        self.name = self.__class__.__name__
+        self.node_weight = [
+            self.step1_layers,self.step2_layers,
+            self.magnitude_layers,self.norm
+        ]
+    
+    def get_weight(self) :
+        weight = list()
+        for node in self.node_weight :
+            wg = node.get_weight()
+            if wg is not None :
+                for w in wg :
+                    weight.append(w)
+        return weight
+
+    def __call__ (self,x) :
+        if self.NormMode == 'prenorm' :
+            values = self.norm(x)
+            step1 = self.step1_layers(values)
+            step2 = self.step2_layers(values) 
+            if self.latenactivation == 'sigmoid' :
+                step1 = activations.sigmoid(step1)
+                step2 = activations.sigmoid(step2)
+            elif self.latenactivation == 'gelu' :
+                step1 = activations.gelu(step1)
+                step2 = activations.gelu(step2)
+            elif self.latenactivation == 'swish' :
+                step1 = activations.swish(step1)
+                step2 = activations.swish(step2)
+            else :
+                raise RuntimeError("Activation not available")
+            laten = step1 + step2 
+            outputs = self.magnitude_layers(laten)
+            outputs = activations.tanh(outputs)
+            outputs = x + outputs 
+            return outputs 
+        
+        elif self.NormMode == 'postnorm' :
+            step1 = self.step1_layers(x)
+            step2 = self.step2_layers(x) 
+            if self.latenactivation == 'sigmoid' :
+                step1 = activations.sigmoid(step1)
+                step2 = activations.sigmoid(step2)
+            elif self.latenactivation == 'gelu' :
+                step1 = activations.gelu(step1)
+                step2 = activations.gelu(step2)
+            elif self.latenactivation == 'swish' :
+                step1 = activations.swish(step1)
+                step2 = activations.swish(step2)
+            else :
+                raise RuntimeError("Activation not available")
+            laten = step1 + step2 
+            outputs = self.magnitude_layers(laten)
+            outputs = activations.tanh(outputs)
+            self.outputs = x + outputs
+            outputs = self.norm(self.outputs)
+            return outputs 
+        else :
+            raise RuntimeError("NormMode just available for prenorm and postnorm")

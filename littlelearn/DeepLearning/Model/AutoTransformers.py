@@ -57,7 +57,8 @@ class AutoTransformers :
                   ,maxpos,type:Literal['encoder-nlp','decoder-nlp','decoder-cross'] = 'encoder-nlp' ,
                   Head_type : Literal['Multi','Single'] = 'Multi'
                   ,level : Literal['light','balance','deep'] = 'light',
-                  PosEncoding : Literal['learn','constant'] = 'learn') :
+                  PosEncoding : Literal['learn','constant'] = 'learn',
+                  NormMode : Literal ['postnorm','prenorm'] = 'prenorm') :
         self.type = type 
         self.level = level 
         self.Head_type = Head_type
@@ -66,6 +67,7 @@ class AutoTransformers :
         self.vocab_size = vocab_size
         self.d_model = d_model 
         self.posencoding_type = PosEncoding
+        self.NormMode = NormMode
         self.__build_model()
     
     class __BasicTransformers :
@@ -81,14 +83,15 @@ class AutoTransformers :
         
 
     class __Encoder_MHA_3block (__BasicTransformers) :
-        def __init__(self,d_model,vocab_size,ffn,max_pos,signal_type) :
+        def __init__(self,d_model,vocab_size,ffn,max_pos,signal_type,
+                     normMode : Literal['prenorm','postnorm']='prenorm') :
             self.signal_type = signal_type
             self.d_model = d_model 
             self.maxpos = max_pos
             self.Embedding = layers.Embedding(vocab_size,d_model)
-            self.block1 = layers.BlockEncoder_MHA(num_head=2,d_model=d_model,ffn=ffn)
-            self.block2 = layers.BlockEncoder_MHA(num_head=2,d_model=d_model,ffn = ffn )
-            self.block3 = layers.BlockEncoder_MHA(num_head=2,d_model=d_model,ffn=ffn)
+            self.block1 = layers.BlockEncoder_MHA(num_head=2,d_model=d_model,ffn=ffn,NormMode=normMode)
+            self.block2 = layers.BlockEncoder_MHA(num_head=2,d_model=d_model,ffn = ffn,NormMode=normMode )
+            self.block3 = layers.BlockEncoder_MHA(num_head=2,d_model=d_model,ffn=ffn,NormMode=normMode)
             if self.signal_type == 'learn' :
                 self.Positional_encoding = layers.Embedding(input_dim=max_pos,output_dim=d_model)
                 self.__node_layers = [
@@ -134,19 +137,20 @@ class AutoTransformers :
         
     
     class __Encoder_MHA_6block (__BasicTransformers) :
-        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.vocab_size = vocab_size
             self.Embedding = layers.Embedding(vocab_size,self.d_model)
             self.maxpos = maxpos
             self.signal_type = signal_type
-            self.block1 = layers.BlockEncoder_MHA(4,d_model=d_model,ffn=ffn_dim)
-            self.block2 = layers.BlockEncoder_MHA(num_head=4,d_model = self.d_model,ffn = ffn_dim)
-            self.block3 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block4 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block5 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block6 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
+            self.block1 = layers.BlockEncoder_MHA(num_head=4,d_model=d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockEncoder_MHA(num_head=4,d_model = self.d_model,ffn = ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
 
             if self.signal_type == 'learn' :
                 self.PositionalEncoding = layers.Embedding(maxpos,d_model)
@@ -199,7 +203,8 @@ class AutoTransformers :
             return x 
     
     class __Encoder_MHS_9block (__BasicTransformers) :
-        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                     normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.vocab_size = vocab_size
@@ -207,15 +212,15 @@ class AutoTransformers :
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(vocab_size,d_model)
             
-            self.block1 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block2 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block3 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block4 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block5 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block6 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block7 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block8 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block9 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
+            self.block1 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block7 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block8 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block9 = layers.BlockEncoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
 
             if self.signal_type == 'learn' :
                 self.Positional_encoding = layers.Embedding(
@@ -280,7 +285,7 @@ class AutoTransformers :
     
     class __Encoder_Attn_3block (__BasicTransformers) :
         def __init__ (self,d_model,vocab_size,ffn_dim,
-                      maxpos,signal_type) :
+                      maxpos,signal_type,normMode : Literal['prenorm','postnorm']='prenorm'): 
             super().__init__()
             self.d_model = d_model 
             self.maxpos= maxpos 
@@ -289,9 +294,9 @@ class AutoTransformers :
             self.Embedding = layers.Embedding(
                 input_dim=self.vocab_size,output_dim=self.d_model
             ) 
-            self.block1 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block2 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block3 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
+            self.block1 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
             
             if self.signal_type == 'learn' :
                 self.positional_encoding = layers.Embedding(
@@ -348,7 +353,8 @@ class AutoTransformers :
             return x 
     
     class __Encoder_Attn_6block (__BasicTransformers) :
-        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type):
+        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                     normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.maxpos = maxpos
@@ -358,12 +364,12 @@ class AutoTransformers :
             self.Embedding = layers.Embedding(
                 input_dim=self.vocab_size,output_dim=self.d_model
             )
-            self.block1 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block2 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block3 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block4 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block5 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block6 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
+            self.block1 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NorMode=normMode)
+            self.block4 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
 
             if self.signal_type == 'learn' :
                 self.positional_encoding = layers.Embedding(
@@ -419,7 +425,8 @@ class AutoTransformers :
             return x 
     
     class __Encoder_Attn_9block (__BasicTransformers) :
-        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.vocab_size = vocab_size 
@@ -427,15 +434,15 @@ class AutoTransformers :
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
             
-            self.block1 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block2 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block3 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block4 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block5 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block6 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block7 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block8 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block9 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim)
+            self.block1 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block7 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block8 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block9 = layers.BlockEncoder_Attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
 
             if self.signal_type == 'learn' :
                 self.postional_encoding = layers.Embedding(
@@ -497,16 +504,17 @@ class AutoTransformers :
             return x 
     
     class __Decoder_Multi_3block (__BasicTransformers) :
-        def __init__ (self,d_model,vocab_size,ffn_size,maxpos,signal_type):
+        def __init__ (self,d_model,vocab_size,ffn_size,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.maxpos = maxpos 
             self.vocab_size = vocab_size
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_MHA(num_head=2,d_model=self.d_model,ffn=ffn_size)
-            self.block2 = layers.BlockDecoder_MHA(num_head=2,d_model=self.d_model,ffn=ffn_size)
-            self.block3 = layers.BlockDecoder_MHA(num_head=2,d_model=self.d_model,ffn=ffn_size)
+            self.block1 = layers.BlockDecoder_MHA(num_head=2,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_MHA(num_head=2,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_MHA(num_head=2,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)
             self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
             if self.signal_type =='learn' :
                 self.positional_encoding = layers.Embedding(input_dim=self.maxpos,output_dim=self.d_model)
@@ -556,19 +564,20 @@ class AutoTransformers :
             return x 
     
     class __Decoder_Multi_6block (__BasicTransformers) :
-        def __init__(self,d_model,vocab_size,ffn_size,maxpos,signal_type):
+        def __init__(self,d_model,vocab_size,ffn_size,maxpos,signal_type,
+                     normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.vocab_size = vocab_size
             self.maxpos = maxpos 
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(input_dim=vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size)
-            self.block2 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size)   
-            self.block3 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size)   
-            self.block4 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size)   
-            self.block5 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size)   
-            self.block6 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size)
+            self.block1 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)   
+            self.block3 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)   
+            self.block4 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)   
+            self.block5 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)   
+            self.block6 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_size,NormMode=normMode)
             self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
 
             if self.signal_type == 'learn' :
@@ -624,22 +633,23 @@ class AutoTransformers :
             return x 
     
     class __Decoder_Multi_9block (__BasicTransformers) :
-        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type):
+        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                     normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model
             self.vocab_size = vocab_size
             self.maxpos = maxpos 
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block2 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block3 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block4 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block5 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block6 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block7 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block8 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block9 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim)
+            self.block1 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode )
+            self.block5 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block7 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block8 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block9 = layers.BlockDecoder_MHA(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
             self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
             if self.signal_type == 'learn' :
                 self.positional_encoding = layers.Embedding(
@@ -701,16 +711,17 @@ class AutoTransformers :
             return x 
     
     class __Decoder_Attention_3block (__BasicTransformers)  :
-        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model
             self.maxpos = maxpos 
             self.signal_type = signal_type
             self.vocab_size = vocab_size
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block2 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block3 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
+            self.block1 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
             self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
             
             if self.signal_type == 'learn' :
@@ -762,19 +773,20 @@ class AutoTransformers :
             return x 
     
     class __Decoder_Attention_6block (__BasicTransformers) :
-        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.maxpos = maxpos 
             self.vocab_size = vocab_size 
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block2 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block3 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block4 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block5 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block6 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
+            self.block1 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
             self.linear = layers.Dense(self.vocab_size,activation='softmax')
 
             if self.signal_type =='learn' :
@@ -832,22 +844,23 @@ class AutoTransformers :
             return x 
     
     class __Decoder_Attention_9block (__BasicTransformers) :
-        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__(self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             super().__init__()
             self.d_model = d_model 
             self.vocab_size = vocab_size
             self.maxpos = maxpos
             self.signal_type = signal_type 
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block2 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block3 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block4 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block5 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block6 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block7 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block8 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
-            self.block9 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim)
+            self.block1 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode = normMode)
+            self.block3 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block7 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block8 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
+            self.block9 = layers.BlockDecoder_attention(d_model=self.d_model,ffn_dim=ffn_dim,NormMode=normMode)
             self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
 
 
@@ -909,16 +922,17 @@ class AutoTransformers :
             return x 
     
     class __DecodersCross_Multi_3block (__BasicTransformers) :
-        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type) :
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm' ) :
             super().__init__()
             self.d_model = d_model
             self.vocab_size = vocab_size
             self.maxpos = maxpos
             self.signal_type = signal_type
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_MHA_cross(num_head=2,d_model=self.d_model,ffn=ffn_dim)
-            self.block2 = layers.BlockDecoder_MHA_cross(num_head=2,d_model=self.d_model,ffn=ffn_dim)
-            self.block3 = layers.BlockDecoder_MHA_cross(num_head=2,d_model=self.d_model,ffn=ffn_dim)
+            self.block1 = layers.BlockDecoder_MHA_cross(num_head=2,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_MHA_cross(num_head=2,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_MHA_cross(num_head=2,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
             self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
             
             if self.signal_type == 'learn' :
@@ -971,18 +985,19 @@ class AutoTransformers :
             return x 
     
     class __DecodersCross_Multi_6block(__BasicTransformers) :
-        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type):
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
             self.d_model = d_model
             self.maxpos = maxpos
             self.signal_type = signal_type
             self.vocab_size = vocab_size 
             self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
-            self.block1 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block2 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block3 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block4 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block5 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim)
-            self.block6 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim)
+            self.block1 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode = normMode)
+            self.block4 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
             self.linear1 = layers.Dense(units=self.vocab_size,activation='softmax')
 
             if self.signal_type == 'learn' :
@@ -1038,7 +1053,82 @@ class AutoTransformers :
             x = self.block6(x,cross_attn)
             x = self.linear1(x)
             return x 
-    
+    class __DecodersCross_Multi_9block (__BasicTransformers) :
+        def __init__ (self,d_model,vocab_size,ffn_dim,maxpos,signal_type,
+                      normMode : Literal['prenorm','postnorm']='prenorm') :
+            super().__init__()
+            self.d_model = d_model
+            self.vocab_size = vocab_size
+            self.maxpos = maxpos 
+            self.signal_type = signal_type
+            self.Embedding = layers.Embedding(input_dim=self.vocab_size,output_dim=self.d_model)
+            self.block1 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block2 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block3 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block4 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block5 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block6 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block7 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block8 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.block9 = layers.BlockDecoder_MHA_cross(num_head=4,d_model=self.d_model,ffn=ffn_dim,NormMode=normMode)
+            self.linear = layers.Dense(units=self.vocab_size,activation='softmax')
+
+            if self.signal_type == 'learn' :
+                self.positional_encoding = layers.Embedding(input_dim=self.maxpos,output_dim=self.d_model)
+                self.__node_layers = [
+                    self.Embedding,self.positional_encoding,
+                    self.block1,self.block2,self.block3,
+                    self.block4,self.block5,self.block6,
+                    self.block7,self.block8,self.block9] 
+            else :
+                self.positional_encoding = ll.preprocessing.PositionalEncodingSinusoidal(
+                    maxpos=self.maxpos,d_model=self.d_model
+                )
+                self.positional_encoding = ll.GradientReflector(tensor=self.positional_encoding,
+                                                                _op='Position')
+                self.__node_layers = [
+                    self.Embedding,self.block1,self.block2,
+                    self.block3,self.block4,self.block5,
+                    self.block6,self.block7,self.block8,self.block9,self.linear
+                ]
+        def get_weight(self):
+            weight = list()
+            for node in self.__node_layers :
+                wg = node.get_weight()
+                if wg is not None :
+                    for w in wg :
+                        weight.append(w)
+            return weight
+        
+        def __call__ (self,x,cross_attn) :
+            if cross_attn is None :
+                raise RuntimeError("The cross_attn can't be None")
+            batch,seq = x.shape
+            x = self.Embedding(x)
+            x*= ll.sqrt(self.d_model)
+
+            if self.signal_type == 'learn' :
+                if isinstance(self.positional_encoding,layers.Embedding):
+                    pos = np.arange(seq)
+                    pos = self.positional_encoding(pos)
+                    pos = ll.expand_dims(pos,axis=0)
+            else :
+                pos = self.positional_encoding
+                pos = ll.expand_dims(pos,axis=0)
+                pos = pos[:,:seq,:]
+            
+            x+= pos 
+            x = self.block1(x,cross_attn)
+            x = self.block2(x,cross_attn)
+            x = self.block3(x,cross_attn)
+            x = self.block4(x,cross_attn)
+            x = self.block5(x,cross_attn)
+            x = self.block6(x,cross_attn)
+            x = self.block7(x,cross_attn)
+            x = self.block8(x,cross_attn)
+            x = self.block9(x,cross_attn)
+            x = self.linear(x)
+            return x
 
 
     def __build_model (self) : 
@@ -1066,7 +1156,8 @@ class AutoTransformers :
                         vocab_size=self.vocab_size,
                         ffn = self.ffn_size,
                         max_pos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
 
                 elif self.level == 'balance' :
@@ -1075,7 +1166,8 @@ class AutoTransformers :
                         d_model=self.d_model,
                         vocab_size=self.vocab_size,
                         ffn_dim=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
                 
                 else :
@@ -1083,7 +1175,8 @@ class AutoTransformers :
                     self.Model = self.__Encoder_MHS_9block(
                         d_model = self.d_model,vocab_size=self.vocab_size,
                         ffn_dim=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
             else :
 
@@ -1091,21 +1184,24 @@ class AutoTransformers :
                     self.Model = self.__Encoder_Attn_3block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
                         ffn_dim=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
                 
                 elif self.level == 'balance' :
                     self.Model = self.__Encoder_Attn_6block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
                         ffn_dim=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
                 
                 else :
                     self.Model = self.__Encoder_Attn_9block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
                         ffn_dim=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode = self.NormMode
                     )
         if self.type == 'decoder-nlp' :
             if self.Head_type == 'Multi' : 
@@ -1113,91 +1209,80 @@ class AutoTransformers :
                     self.Model = self.__Decoder_Multi_3block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
                         ffn_size=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode= self.NormMode
                     )
                 elif self.level == 'balance' :
                     self.Model = self.__Decoder_Multi_6block(
                         d_model=self.d_model,vocab_size=self.vocab_size,ffn_size=self.ffn_size,
-                        maxpos=self.maxpos,signal_type=self.posencoding_type
+                        maxpos=self.maxpos,signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
                 
                 else :
                     self.Model = self.__Decoder_Multi_9block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
-                        ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type
+                        ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
             else :
                 if self.level == 'light' :
                     self.Model = self.__Decoder_Attention_3block(
                         d_model=self.d_model,vocab_size=self.vocab_size,ffn_dim=self.ffn_size,
-                        maxpos=self.maxpos,signal_type=self.posencoding_type
+                        maxpos=self.maxpos,signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
                 
                 elif self.level == 'balance' :
                     self.Model = self.__Decoder_Attention_6block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
                         ffn_dim=self.ffn_size,maxpos=self.maxpos,
-                        signal_type=self.posencoding_type
+                        signal_type=self.posencoding_type,
+                        normMode=self.NormMode
                     )
                 
                 else :
                     self.Model = self.__Decoder_Attention_9block(
                         d_model=self.d_model,vocab_size=self.vocab_size,
-                        ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type
+                        ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type,
+                        normMode = self.NormMode 
                     )
             if self.type == 'decoder-cross' :
                 if self.Head_type == 'Multi' :
                     if self.level == 'light' :
                         self.Model = self.__DecodersCross_Multi_3block(
                             d_model=self.d_model,vocab_size=self.vocab_size,
-                            ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type
+                            ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type,
+                            normMode=self.NormMode
                         )
                     elif self.level == 'balance' :
                         self.Model = self.__DecodersCross_Multi_6block(
                             d_model=self.d_model,vocab_size=self.vocab_size,
-                            ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type
+                            ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type,
+                            normMode=self.NormMode
                         )
                     else :
-                        raise RuntimeError("Decoder Cross for deep level will able for next update")
+                        self.Model = self.__DecodersCross_Multi_9block(
+                            d_model=self.d_model,vocab_size=self.vocab_size,
+                            ffn_dim=self.ffn_size,maxpos=self.maxpos,signal_type=self.posencoding_type,
+                            normMode=self.NormMode
+                        )
                 else :
                     raise RuntimeError("Sorry Decoder Cross for Single head type will able for next update")
 
 
     
     def __call__ (self,x) :
-        if isinstance(self.Model,self.__Encoder_Attn_3block):
-            return self.Model(x)
-        if isinstance(self.Model,self.__Encoder_Attn_6block):
-            return self.Model(x)
-        if isinstance(self.Model,self.__Encoder_Attn_9block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Encoder_MHA_3block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Encoder_MHA_6block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Encoder_MHS_9block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Attention_3block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Attention_6block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Attention_9block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Multi_3block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Multi_6block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Multi_9block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__Decoder_Attention_9block) :
-            return self.Model(x)
-        if isinstance (self.Model,self.__DecodersCross_Multi_3block) :
-            return self.Model(x)
-        if isinstance(self.Model,self.__DecodersCross_Multi_6block) :
-            return self.Model(x)
+        """ Call model for forwardpass """
+        return self.Model(x)
     
     def predict(self,x) :
+        """ Predict from model"""
         return self.__call__(x)
+    
+    def get_weight(self) :
+        """ Get weight from model"""
+        return self.Model.get_weight()
             
         
 
