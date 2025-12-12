@@ -2,7 +2,72 @@ from littlelearn.DeepLearning import optimizers,activations,layers
 import littlelearn as ll 
 from typing import Literal
 
-class Feed_forward (ll.DeepLearning.layers.Component):
+class __Component :
+
+    """
+        Component
+        ---------------
+        Component is abstract layers template for make custom model or 
+        spesial model without need to make some function to updating weight.
+
+        How to use:
+        ----------------
+            ```
+                class MLP(Component):
+                    def __init__ (self,num_class):
+                        super().__init__()
+                        self.layers1 = Dense(32,'relu')
+                        self.layers2 = Dense(64,'relu')
+                        self.final_out = Dense(num_class)
+                    
+                    def __call__(self,**kwargs):
+    
+                        x = self.layers1(x)
+                        x = self.layers2(x)
+                        x = self.layers3(x)
+            ```
+        
+        Author:
+        ---------
+        Candra Alpin Gunawan 
+
+        Warning:
+        ------------------
+        you have call  Component or model before get_weight  
+    """
+
+    def __init__(self):
+        pass 
+        
+    
+    def parameter(self) :
+        class_layers = self.__dict__
+        param = list()
+
+        for obj in class_layers.values():
+            try :
+                if isinstance(obj,ll.GradientReflector):
+                    param.append(obj)
+                elif isinstance(obj,Component):
+                    weight = obj.parameter()
+                    for w in weight :
+                        param.append(w) 
+                else:
+                    weight = obj.get_weight()
+                    if weight is not None :
+                        for w in weight :
+                            param.append(w)
+            except :
+                pass 
+
+        return param 
+    
+   
+    def __call__(self,**kwargs):
+        raise NotImplementedError
+        
+
+class Feed_forward (__Component):
     """
         Feed forward (FFN)
         -----------------
@@ -57,7 +122,8 @@ class Feed_forward (ll.DeepLearning.layers.Component):
         x = self.out_linear(x)
         x = self.dropout(x)
         return x 
-class BlockEncoder_MHA(ll.DeepLearning.layers.Component):
+    
+class BlockEncoder_MHA(__Component):
     """
     Transformer-style encoder block using Multi-Head Attention (MHA) 
     and a feed-forward network (FFN).
@@ -167,7 +233,7 @@ class BlockEncoder_MHA(ll.DeepLearning.layers.Component):
         else :
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
-class BlockDecoder_MHA_cross(ll.DeepLearning.layers.Component):
+class BlockDecoder_MHA_cross(__Component):
     """
     Transformer-style decoder block with both self-attention and cross-attention.
 
@@ -311,7 +377,7 @@ class BlockDecoder_MHA_cross(ll.DeepLearning.layers.Component):
         
 
 
-class BlockEncoder_Attention(ll.DeepLearning.layers.Component):
+class BlockEncoder_Attention(__Component):
     """
     Transformer-style encoder block using single-head Attention 
     (instead of Multi-Head Attention) and a feed-forward network.
@@ -423,7 +489,7 @@ class BlockEncoder_Attention(ll.DeepLearning.layers.Component):
         else :
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
-class BlockDecoders_Attention_cross(ll.DeepLearning.layers.Component):
+class BlockDecoders_Attention_cross(__Component):
     """
     Transformer-style decoder block using single-head attention for both 
     self-attention and cross-attention, followed by a feed-forward network.
@@ -557,7 +623,7 @@ class BlockDecoders_Attention_cross(ll.DeepLearning.layers.Component):
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
         
 
-class BlockDecoder_MHA(ll.DeepLearning.layers.Component):
+class BlockDecoder_MHA(__Component):
     """
     Transformer-style decoder block with Multi-Head Self-Attention (MHA) 
     followed by a feed-forward network (FFN).
@@ -675,7 +741,7 @@ class BlockDecoder_MHA(ll.DeepLearning.layers.Component):
         else : 
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
-class BlockDecoder_attention(ll.DeepLearning.layers.Component):
+class BlockDecoder_attention(__Component):
     """
     A Transformer Decoder Block with Attention and Feed-Forward Network.
 

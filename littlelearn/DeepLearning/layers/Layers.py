@@ -4,7 +4,72 @@ import traceback
 from littlelearn.DeepLearning import activations
 import littlelearn as ll 
 
-class Dense (ll.DeepLearning.layers.Component):
+class __Component :
+
+    """
+        Component
+        ---------------
+        Component is abstract layers template for make custom model or 
+        spesial model without need to make some function to updating weight.
+
+        How to use:
+        ----------------
+            ```
+                class MLP(Component):
+                    def __init__ (self,num_class):
+                        super().__init__()
+                        self.layers1 = Dense(32,'relu')
+                        self.layers2 = Dense(64,'relu')
+                        self.final_out = Dense(num_class)
+                    
+                    def __call__(self,**kwargs):
+    
+                        x = self.layers1(x)
+                        x = self.layers2(x)
+                        x = self.layers3(x)
+            ```
+        
+        Author:
+        ---------
+        Candra Alpin Gunawan 
+
+        Warning:
+        ------------------
+        you have call  Component or model before get_weight  
+    """
+
+    def __init__(self):
+        pass 
+        
+    
+    def parameter(self) :
+        class_layers = self.__dict__
+        param = list()
+
+        for obj in class_layers.values():
+            try :
+                if isinstance(obj,ll.GradientReflector):
+                    param.append(obj)
+                elif isinstance(obj,Component):
+                    weight = obj.parameter()
+                    for w in weight :
+                        param.append(w) 
+                else:
+                    weight = obj.get_weight()
+                    if weight is not None :
+                        for w in weight :
+                            param.append(w)
+            except :
+                pass 
+
+        return param 
+    
+   
+    def __call__(self,**kwargs):
+        raise NotImplementedError
+        
+
+class Dense (__Component):
     """
     Fully Connected (Dense) Layer.
 
@@ -157,7 +222,7 @@ class Dense (ll.DeepLearning.layers.Component):
             elif self.initial_bias == 'random' and self.initial_weight=='uniform' :
                 uniform_He = np.sqrt(6/Features)
                 self.bias = np.random.uniform(low=-uniform_He,high=uniform_He,size=(1,self.units))
-            self.parameter = (Features * self.units) + self.unitsS
+            self.parameter = (Features * self.units) + self.units
         except Exception as e :
             if self.units <= 0 or self.units is None :
                 e.add_note("recomended for 2 exponential values like = > example = 2,4,8,16,32....N for initial units")
@@ -240,7 +305,7 @@ class Dense (ll.DeepLearning.layers.Component):
 
 
 
-class Attention (ll.DeepLearning.layers.Component):
+class Attention (__Component):
     """
     Transformer-style Attention Layer (Single Head)
 
@@ -528,7 +593,7 @@ class Attention (ll.DeepLearning.layers.Component):
             traceback.print_exception(type(e),e,e.__traceback__)
             raise 
 
-class MultiHeadAttention (ll.DeepLearning.layers.Component):
+class MultiHeadAttention (__Component):
     """
     Multi-Head Attention Layer.
 
@@ -851,7 +916,7 @@ class MultiHeadAttention (ll.DeepLearning.layers.Component):
             raise 
 
 
-class Embedding (ll.DeepLearning.layers.Component):
+class Embedding (__Component):
     """
         Embedding Layer
 
@@ -929,7 +994,7 @@ class Embedding (ll.DeepLearning.layers.Component):
         return out 
 
     
-class SimpleRNN (ll.DeepLearning.layers.Component):
+class SimpleRNN (__Component):
     """
     SimpleRNN Layer (Elman-style recurrent cell)
 
@@ -1009,7 +1074,7 @@ class SimpleRNN (ll.DeepLearning.layers.Component):
         return out 
     
 
-class LSTM (ll.DeepLearning.layers.Component):
+class LSTM (__Component):
     """
     Long Short-Term Memory (LSTM) Layer.
 
@@ -1176,7 +1241,7 @@ class LSTM (ll.DeepLearning.layers.Component):
         
         
         
-class GRU (ll.DeepLearning.layers.Component):
+class GRU (__Component):
     """
         Gated Recurrent Unit (GRU) Layer.
 
@@ -1306,7 +1371,7 @@ class GRU (ll.DeepLearning.layers.Component):
         self.out_shape = out.shape 
         return out
 
-class LatenConnectedBlock (ll.DeepLearning.layers.Component):
+class LatenConnectedBlock (__Component):
     """
         submodel block for Laten Connected Model (LCM) Layer
         -----------------------------------------------------
@@ -1415,7 +1480,7 @@ class LatenConnectedBlock (ll.DeepLearning.layers.Component):
         else :
             raise RuntimeError("NormMode just available for prenorm and postnorm")
 
-class LCTBlock (ll.DeepLearning.layers.Component) :
+class LCTBlock (__Component) :
     def __init__ (self,d_model : int ,num_head : int ,drop_rate : float,causal_mask : bool = False) :
         super().__init__()
         self.attention = MultiHeadAttention(
