@@ -1,6 +1,6 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (0.2.1) date : (12-December-2025): 
+update Version (0.2.2) date : (12-December-2025): 
 
     - add new preprocessing AutoPreprocessing 
     - tensor.plot_trace_operation bug fixed 
@@ -119,5 +119,6 @@ suport this project : https://ko-fi.com/alpin92578
 Candra Alpin Gunawan
 📧 hinamatsuriairin@gmail.com
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
+
 
 youtube : https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY
