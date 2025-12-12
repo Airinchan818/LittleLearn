@@ -1,6 +1,6 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (0.2.0) date : (12-December-2025): 
+update Version (0.2.1) date : (12-December-2025): 
 
     - add new preprocessing AutoPreprocessing 
     - tensor.plot_trace_operation bug fixed 
@@ -10,7 +10,7 @@ update Version (0.2.0) date : (12-December-2025):
     - add LCT Block sub model / layers for new Post-transformers model 
     - add Trainer class for Custom Model training more easy 
     - all layers and sub model inheritance on Component Class 
-     
+        
      
 
 
@@ -119,6 +119,5 @@ suport this project : https://ko-fi.com/alpin92578
 Candra Alpin Gunawan
 📧 hinamatsuriairin@gmail.com
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
-
 
 youtube : https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY

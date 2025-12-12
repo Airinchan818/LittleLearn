@@ -3,9 +3,8 @@ from typing import Literal
 import traceback
 from littlelearn.DeepLearning import activations
 import littlelearn as ll 
-from littlelearn.DeepLearning.layers import Component
 
-class Dense (Component):
+class Dense (ll.DeepLearning.layers.Component):
     """
     Fully Connected (Dense) Layer.
 
@@ -241,7 +240,7 @@ class Dense (Component):
 
 
 
-class Attention (Component):
+class Attention (ll.DeepLearning.layers.Component):
     """
     Transformer-style Attention Layer (Single Head)
 
@@ -529,7 +528,7 @@ class Attention (Component):
             traceback.print_exception(type(e),e,e.__traceback__)
             raise 
 
-class MultiHeadAttention (Component):
+class MultiHeadAttention (ll.DeepLearning.layers.Component):
     """
     Multi-Head Attention Layer.
 
@@ -852,7 +851,7 @@ class MultiHeadAttention (Component):
             raise 
 
 
-class Embedding (Component):
+class Embedding (ll.DeepLearning.layers.Component):
     """
         Embedding Layer
 
@@ -930,7 +929,7 @@ class Embedding (Component):
         return out 
 
     
-class SimpleRNN (Component):
+class SimpleRNN (ll.DeepLearning.layers.Component):
     """
     SimpleRNN Layer (Elman-style recurrent cell)
 
@@ -1010,7 +1009,7 @@ class SimpleRNN (Component):
         return out 
     
 
-class LSTM (Component):
+class LSTM (ll.DeepLearning.layers.Component):
     """
     Long Short-Term Memory (LSTM) Layer.
 
@@ -1177,7 +1176,7 @@ class LSTM (Component):
         
         
         
-class GRU (Component):
+class GRU (ll.DeepLearning.layers.Component):
     """
         Gated Recurrent Unit (GRU) Layer.
 
@@ -1307,7 +1306,7 @@ class GRU (Component):
         self.out_shape = out.shape 
         return out
 
-class LatenConnectedBlock (Component):
+class LatenConnectedBlock (ll.DeepLearning.layers.Component):
     """
         submodel block for Laten Connected Model (LCM) Layer
         -----------------------------------------------------
@@ -1416,7 +1415,7 @@ class LatenConnectedBlock (Component):
         else :
             raise RuntimeError("NormMode just available for prenorm and postnorm")
 
-class LCTBlock (Component) :
+class LCTBlock (ll.DeepLearning.layers.Component) :
     def __init__ (self,d_model : int ,num_head : int ,drop_rate : float,causal_mask : bool = False) :
         super().__init__()
         self.attention = MultiHeadAttention(
