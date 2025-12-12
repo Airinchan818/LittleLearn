@@ -1,9 +1,74 @@
 import littlelearn as ll 
-from typing import Literal
+from typing import Literal,Optional,Callable
 import numpy as np 
 import traceback 
 
-class LayerNormalization :
+class Component :
+
+    """
+        Component
+        ---------------
+        Component is abstract layers template for make custom model or 
+        spesial model without need to make some function to updating weight.
+
+        How to use:
+        ----------------
+            ```
+                class MLP(Component):
+                    def __init__ (self,num_class):
+                        super().__init__()
+                        self.layers1 = Dense(32,'relu')
+                        self.layers2 = Dense(64,'relu')
+                        self.final_out = Dense(num_class)
+                    
+                    def __call__(self,**kwargs):
+    
+                        x = self.layers1(x)
+                        x = self.layers2(x)
+                        x = self.layers3(x)
+            ```
+        
+        Author:
+        ---------
+        Candra Alpin Gunawan 
+
+        Warning:
+        ------------------
+        you have call  Component or model before get_weight  
+    """
+
+    def __init__(self):
+        pass 
+        
+    
+    def parameter(self) :
+        class_layers = self.__dict__
+        param = list()
+
+        for obj in class_layers.values():
+            try :
+                if isinstance(obj,ll.GradientReflector):
+                    param.append(obj)
+                elif isinstance(obj,Component):
+                    weight = obj.parameter()
+                    for w in weight :
+                        param.append(w) 
+                else:
+                    weight = obj.get_weight()
+                    if weight is not None :
+                        for w in weight :
+                            param.append(w)
+            except :
+                pass 
+
+        return param 
+    
+   
+    def __call__(self,**kwargs):
+        raise NotImplementedError
+        
+
+class LayerNormalization (Component):
     """
     Layer Normalization Layer.
 
@@ -32,6 +97,7 @@ class LayerNormalization :
     Candra Alpin Gunawan
     """
     def __init__ (self,epsilon=1e-6) :
+        super().__init__()
         self.beta = None 
         self.gamma = None 
         self.epsilon = epsilon 
@@ -42,6 +108,7 @@ class LayerNormalization :
     def __build_component (self,features) :
         self.beta = ll.GradientReflector(np.zeros((1,features)),_op='beta')
         self.gamma = ll.GradientReflector(np.ones((1,features)),_op='gamma')
+        self.parameter += self.beta.shape[-1] + self.gamma.shape[-1]
 
     def get_weight(self) :
         return [self.beta,self.gamma]
@@ -55,7 +122,7 @@ class LayerNormalization :
         self.out_shape = out.shape 
         return out 
 
-class BacthNormalization :
+class BacthNormalization (Component):
     """
 
         Batch Normalization Layer.
@@ -77,6 +144,7 @@ class BacthNormalization :
     """
 
     def __init__(self,epsilon=1e-6):
+        super().__init__()
         self.epsilon = epsilon
         self.gamma = None 
         self.name = self.__class__.__name__ 
@@ -87,6 +155,7 @@ class BacthNormalization :
     def __build_component (self,features) :
         self.gamma = ll.GradientReflector(np.ones((1,features)),_op='gamma')
         self.beta = ll.GradientReflector(np.zeros((1,features)),_op='beta')
+        self.parameter += self.gamma.shape[-1] + self.beta.shape[-1]
     
     def get_weight(self) :
         return [self.gamma,self.beta]
@@ -100,7 +169,7 @@ class BacthNormalization :
         self.out_shape = out.shape 
         return out 
     
-class GlobalAveragePooling1D :
+class GlobalAveragePooling1D (Component):
     """
     Global Average Pooling 1D Layer.
 
@@ -141,6 +210,7 @@ class GlobalAveragePooling1D :
     Candra Alpin Gunawan
     """
     def __init__(self,axis=1,Keepdims=False) :
+        super().__init__()
         self.axis = axis 
         self.keepdims = Keepdims
         self.parameter = 0 
@@ -157,7 +227,7 @@ class GlobalAveragePooling1D :
     def get_weight(self) :
         return None 
 
-class DropOut :
+class DropOut (Component):
     """
     DropOut Layer
     --------------------
@@ -210,8 +280,11 @@ class DropOut :
     Candra Alpin Gunawan 
     """
     def __init__ (self,rate : float = 0.1) :
+        super().__init__()
         self.rate = rate 
         self.out_shape = None 
+        self.name = self.__class__.__name__
+        self.parameter = 0
     
     def __call__ (self,x) :
         if not isinstance(x,ll.GradientReflector) :
@@ -222,3 +295,175 @@ class DropOut :
     
     def get_weight(self) :
         return None 
+
+
+
+def uniform_he (tensor) :
+    """
+        uniform_he\n
+        he initiator with uniform distribution\n 
+
+        parameter:\n 
+        tensor:GradientReflector
+
+        output:\n
+        tensor with he uniform
+    """
+    if not isinstance(tensor,ll.GradientReflector):
+        tensor = ll.GradientReflector(tensor)
+    s = tensor.shape
+    if len(s) >=2 :
+        shape = s[-2]
+        std = np.sqrt(6/shape)
+    else :
+        std = np.sqrt(6/s[0])
+    
+    tensor_arr = np.random.uniform(low=-std,high=std,size=tensor.shape)
+    tensor.tensor = tensor_arr
+    return tensor
+
+    
+   
+
+class Component :
+
+    """
+        Component
+        ---------------
+        Component is abstract layers template for make custom model or 
+        spesial model without need to make some function to updating weight.
+
+        How to use:
+        ----------------
+            ```
+                class MLP(Component):
+                    def __init__ (self,num_class):
+                        super().__init__()
+                        self.layers1 = Dense(32,'relu')
+                        self.layers2 = Dense(64,'relu')
+                        self.final_out = Dense(num_class)
+                    
+                    def __call__(self,**kwargs):
+    
+                        x = self.layers1(x)
+                        x = self.layers2(x)
+                        x = self.layers3(x)
+            ```
+        
+        Author:
+        ---------
+        Candra Alpin Gunawan 
+
+        Warning:
+        ------------------
+        you have call  Component or model before get_weight  
+    """
+
+    def __init__(self):
+        pass 
+        
+    
+    def parameter(self) :
+        class_layers = self.__dict__
+        param = list()
+
+        for obj in class_layers.values():
+            try :
+                if isinstance(obj,ll.GradientReflector):
+                    param.append(obj)
+                elif isinstance(obj,Component):
+                    weight = obj.parameter()
+                    for w in weight :
+                        param.append(w) 
+                else:
+                    weight = obj.get_weight()
+                    if weight is not None :
+                        for w in weight :
+                            param.append(w)
+            except :
+                pass 
+
+        return param 
+    
+   
+    def __call__(self,**kwargs):
+        raise NotImplementedError
+            
+
+def normal_glorot (tensor) :
+    """
+        normal_glorot(tensor)\n
+        glorot initiator with normal distribution 
+
+        parameters:\n
+        tensor : GradientReflector tensor
+
+        output:\n 
+        tensor with normal_glorot initiator
+
+    """
+    if not isinstance(tensor,ll.GradientReflector):
+        tensor = ll.GradientReflector(tensor)
+    s = tensor.shape
+    if len(s) >= 2:
+        shape = s[-1],s[-2]
+        std = np.sqrt(2/(shape[0] + shape[1]))
+    else :
+        shape = s[0]
+        std = np.sqrt(2/shape)
+    
+    tensor_arr = np.random.normal(loc=0.0,scale=std,size=tensor.shape)
+    tensor.tensor = tensor_arr
+    return tensor 
+
+def uniform_glorot (tensor) :
+    """
+        uniform_glorot(tensor)\n
+        glorot initiator with uniform distribution 
+
+        parameters:\n
+        tensor : GradientReflector tensor
+
+        output:\n 
+        tensor with uniform_glorot initiator
+
+    """
+    if not isinstance(tensor,ll.GradientReflector):
+        tensor = ll.GradientReflector(tensor)
+    s = tensor.shape
+    if len(s)>=2 :
+        shape = s[-1],s[-2]
+        std = np.sqrt(6/(shape[0] + shape[1]))
+        
+    else :
+        shape = s[0]
+        std = np.sqrt(6/shape)
+    
+    tensor_arr = np.random.uniform(low=-std,high=std,size=tensor.shape)
+    tensor.tensor = tensor_arr
+    return tensor 
+
+def normal_he (tensor) :
+
+    """
+        normal_he\n
+        he initiator with normal distribution\n 
+
+        parameter:\n 
+        tensor:GradientReflector
+
+        output:\n
+        tensor with he normal
+    """
+    if not isinstance(tensor,ll.GradientReflector):
+        tensor = ll.GradientReflector(tensor)
+    s = tensor.shape
+    if len(s) >=2 :
+        shape = s[-2]
+        std = np.sqrt(2/shape)
+    else :
+        std = np.sqrt(2/s[0])
+    
+    tensor_arr = np.random.normal(loc=0,scale=std,size=tensor.shape)
+    tensor.tensor = tensor_arr
+    return tensor 

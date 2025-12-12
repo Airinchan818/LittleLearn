@@ -25,6 +25,12 @@ here we have 4 variants of Laten Connected Model Architecture:
 Author:
 ------------
  Candra Alpin Gunawan 
+
+reference:
+-------------
+Candra Alpin Gunawan "LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"
+Zenodo 01 November 2025 
+link:https://zenodo.org/records/17501400?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6Ijk2ZmJmNDg3LWI3MTYtNDVlNy05OWEzLTRiOTZkNGFhOTkzMyIsImRhdGEiOnt9LCJyYW5kb20iOiJiZTNhZjBmMGJmN2NmN2EyNWYyMzRiZWI3MjJkMjcwZCJ9.1Tcsiz_aRDDHbR2MmUdf2MkcUPbyKsI88dRGsv1O3MpA-dxBMk7B4JiSvfwk0RKG9SBzV7WGHY3mnth_iEwhTg 
 """
 
 
@@ -56,6 +62,8 @@ class LatenConnectedModel5Block :
         the activation function for laten gate, default is 'sigmoid'
     encoding_mode : Literal['sinusoidal','learned']
         the mode of positional encoding, 'sinusoidal' or 'learned', default is 'sinusoidal'
+    drop_rate : float 
+        rate of dropout mechanism     
     
     returns:
     -------
@@ -66,27 +74,37 @@ class LatenConnectedModel5Block :
     Author:
     ------
     Candra Alpin Gunawan
+
+    reference:
+    -------------
+    Candra Alpin Gunawan "LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"\n
+    Zenodo 01 November 2025 
+    link:https://zenodo.org/records/17501400?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6Ijk2ZmJmNDg3LWI3MTYtNDVlNy05OWEzLTRiOTZkNGFhOTkzMyIsImRhdGEiOnt9LCJyYW5kb20iOiJiZTNhZjBmMGJmN2NmN2EyNWYyMzRiZWI3MjJkMjcwZCJ9.1Tcsiz_aRDDHbR2MmUdf2MkcUPbyKsI88dRGsv1O3MpA-dxBMk7B4JiSvfwk0RKG9SBzV7WGHY3mnth_iEwhTg 
     """
     def __init__ (self,vocab_size : int ,d_model : int,maxpos : int,
-                  NormMode : Literal['prenorm','postnorm'] = 'prenorm',
+                  NormMode : Literal['prenorm','postnorm'] = 'prenorm',drop_rate : float = 0.1,
                   laten_activation : Literal['sigmoid','gelu','swish'] = 'sigmoid',
                   encoding_mode : Literal['sinusoidal','learned'] = 'sinusoidal') :
         self.embedding = dl.layers.Embedding(vocab_size,d_model)
         self.d_model = d_model 
         self.block1 = dl.layers.LatenConnectedBlock(
-            units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            units=d_model,NormMode=NormMode,laten_activation=laten_activation,
+            drop_rate=drop_rate
         )
         self.block2 = dl.layers.LatenConnectedBlock(
-            units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            units=d_model,NormMode=NormMode,laten_activation=laten_activation,
+            drop_rate=drop_rate
         )
         self.block3 = dl.layers.LatenConnectedBlock(
-            units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            units=d_model,NormMode=NormMode,laten_activation=laten_activation,drop_rate=drop_rate
         )
         self.block4 = dl.layers.LatenConnectedBlock(
-            units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            units=d_model,NormMode=NormMode,laten_activation=laten_activation,
+            drop_rate=drop_rate
         )
         self.block5 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         if encoding_mode == 'sinusoidal' :
             self.positional_encoding = preprocessing.PositionalEncodingSinusoidal(
@@ -163,6 +181,8 @@ class LatenConnectedModel8Block :
         the activation function for laten gate, default is 'sigmoid'
     encoding_mode : Literal['sinusoidal','learned']
         the mode of positional encoding, 'sinusoidal' or 'learned', default is 'sinusoidal'
+    drop_rate : float
+        rate of dropout mechanism 
     
     returns:
     -------
@@ -173,36 +193,50 @@ class LatenConnectedModel8Block :
     Author:
     ---------
     Candra Alpin Gunawan
+
+    reference:
+    -------------
+    Candra Alpin Gunawan "LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"\n
+    Zenodo 01 November 2025 
+    link:https://zenodo.org/records/17501400?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6Ijk2ZmJmNDg3LWI3MTYtNDVlNy05OWEzLTRiOTZkNGFhOTkzMyIsImRhdGEiOnt9LCJyYW5kb20iOiJiZTNhZjBmMGJmN2NmN2EyNWYyMzRiZWI3MjJkMjcwZCJ9.1Tcsiz_aRDDHbR2MmUdf2MkcUPbyKsI88dRGsv1O3MpA-dxBMk7B4JiSvfwk0RKG9SBzV7WGHY3mnth_iEwhTg 
     """
     def __init__ (self,vocab_size : int ,d_model : int,maxpos : int,
-                NormMode : Literal['prenorm','postnorm'] = 'prenorm',
+                NormMode : Literal['prenorm','postnorm'] = 'prenorm',drop_rate : float = 0.1,
                 laten_activation : Literal['sigmoid','gelu','swish'] = 'sigmoid',
                 encoding_mode : Literal['sinusoidal','learned'] = 'sinusoidal') :
         self.embedding = dl.layers.Embedding(vocab_size,d_model)
         self.d_model = d_model 
         self.block1 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block2 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block3 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block4 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block5 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block6 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block7 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block8 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         if encoding_mode == 'sinusoidal' :
             self.positional_encoding = preprocessing.PositionalEncodingSinusoidal(
@@ -288,7 +322,9 @@ class LatenConnectedModel12Block :
         the activation function for laten gate, default is 'sigmoid'
     encoding_mode : Literal['sinusoidal','learned']
         the mode of positional encoding, 'sinusoidal' or 'learned', default is 'sinusoidal'
-    
+    drop_rate : float 
+        rate of dropout mechanism 
+
     returns:
     -----------
     outputs : Gradient Reflector Tensor
@@ -299,8 +335,14 @@ class LatenConnectedModel12Block :
     --------
     Candra Alpin Gunawan 
 
+    reference:
+    -------------
+    Candra Alpin Gunawan "LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"\n
+    Zenodo 01 November 2025 
+    link:https://zenodo.org/records/17501400?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6Ijk2ZmJmNDg3LWI3MTYtNDVlNy05OWEzLTRiOTZkNGFhOTkzMyIsImRhdGEiOnt9LCJyYW5kb20iOiJiZTNhZjBmMGJmN2NmN2EyNWYyMzRiZWI3MjJkMjcwZCJ9.1Tcsiz_aRDDHbR2MmUdf2MkcUPbyKsI88dRGsv1O3MpA-dxBMk7B4JiSvfwk0RKG9SBzV7WGHY3mnth_iEwhTg 
+
     """
-    def __init__ (self,vocab_size : int ,d_model : int,maxpos : int,
+    def __init__ (self,vocab_size : int ,d_model : int,maxpos : int,drop_rate : float = 0.1,
                 NormMode : Literal['prenorm','postnorm'] = 'prenorm',
                 laten_activation : Literal['sigmoid','gelu','swish'] = 'sigmoid',
                 encoding_mode : Literal['sinusoidal','learned'] = 'sinusoidal') :
@@ -308,39 +350,51 @@ class LatenConnectedModel12Block :
         self.d_model = d_model 
         self.block1 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block2 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block3 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block4 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block5 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block6 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block7 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block8 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block9 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block10 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block11 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block12 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         if encoding_mode == 'sinusoidal' :
             self.positional_encoding = preprocessing.PositionalEncodingSinusoidal(
@@ -439,7 +493,9 @@ class LatenConnectedModel16Block :
             the activation function for laten gate, default is 'sigmoid'
         encoding_mode : Literal['sinusoidal','learned']
             the mode of positional encoding, 'sinusoidal' or 'learned', default is 'sinusoidal'
-        
+        drop_rate : float
+            rate of dropout mechanism  
+            
         returns:
         -----------
         outputs : Gradient Reflector Tensor
@@ -450,60 +506,82 @@ class LatenConnectedModel16Block :
         --------
         Candra Alpin Gunawan
 
+        reference:
+        -------------
+        Candra Alpin Gunawan "LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"\n
+        Zenodo 01 November 2025 
+        link:https://zenodo.org/records/17501400?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6Ijk2ZmJmNDg3LWI3MTYtNDVlNy05OWEzLTRiOTZkNGFhOTkzMyIsImRhdGEiOnt9LCJyYW5kb20iOiJiZTNhZjBmMGJmN2NmN2EyNWYyMzRiZWI3MjJkMjcwZCJ9.1Tcsiz_aRDDHbR2MmUdf2MkcUPbyKsI88dRGsv1O3MpA-dxBMk7B4JiSvfwk0RKG9SBzV7WGHY3mnth_iEwhTg 
+
     """
-    def __init__ (self,vocab_size : int ,d_model : int,maxpos : int,
+    def __init__ (self,vocab_size : int ,d_model : int,maxpos : int,drop_rate : float = 0.1,
                 NormMode : Literal['prenorm','postnorm'] = 'prenorm',
                 laten_activation : Literal['sigmoid','gelu','swish'] = 'sigmoid',
                 encoding_mode : Literal['sinusoidal','learned'] = 'sinusoidal') :
         self.embedding = dl.layers.Embedding(vocab_size,d_model)
         self.d_model = d_model 
         self.block1 = dl.layers.LatenConnectedBlock(
-            units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            units=d_model,NormMode=NormMode,laten_activation=laten_activation,
+            drop_rate=drop_rate
         )
         self.block2 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block3 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block4 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block5 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block6 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block7 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block8 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block9 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block10 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block11 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block12 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block13 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block14 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block15 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         self.block16 = dl.layers.LatenConnectedBlock(
             units=d_model,NormMode=NormMode,laten_activation=laten_activation
+            ,drop_rate=drop_rate
         )
         if encoding_mode == 'sinusoidal' :
             self.positional_encoding = preprocessing.PositionalEncodingSinusoidal(

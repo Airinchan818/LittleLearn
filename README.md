@@ -1,18 +1,17 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (0.1.9) date : (14-october-2025) : 
--get_weight bug fixed on AutoTransformers 
--update add option "PreNorm and PostNorm" on BlockTransformers 
-- update add option "PreNorm And PostNorm" on AutoTransformers 
-- update add Deep level for Decoder crossAttention in AutoTransformers 
-- update Hubber loss support multi output regression 
-- update Mean Absolute Error support multi outputs regression
-- update Mean Squared Error support multi outputs regression  
-- update new Layers LatenConnected Layers 
-- update new Model variant LatenConnectedModel (5,8,12,16) block stacking. 
-- update Gradient Clipper Tools (clip by norm, clip by values, clip by global) 
-- update new Module Gradient Tools for look gradient interaction
-- update new layers DropOut  
+update Version (0.2.0) date : (12-December-2025): 
+    - add new preprocessing AutoPreprocessing 
+    - tensor.plot_trace_operation bug fixed 
+    - add dropout mechanism in AutoTransformers 
+    - add dropout mechanism in LCM   
+    - add abstract class Component for Custom Model 
+    - add LCT Block sub model / layers for new Post-transformers model 
+    - add Trainer class for Custom Model training more easy 
+    - all layers and sub model inheritance on Component Class 
+     
+     
+
 
 
 LittleLearn is an experimental and original machine learning framework built from scratch — inspired by the simplicity of Keras and the flexibility of PyTorch, yet designed with its own architecture, philosophy, and gradient engine.
@@ -119,6 +118,5 @@ suport this project : https://ko-fi.com/alpin92578
 Candra Alpin Gunawan
 📧 hinamatsuriairin@gmail.com
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
-
 
 youtube : https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY

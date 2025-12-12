@@ -43,9 +43,9 @@ Candra Alpin Gunawan
 """
 __name__ = "littlelearn"
 __author__ = "Candra Alpin Gunawan"
-__version__ = "0.1.9"
+__version__ = "0.2.0"
 __license__ = "Apache 2.0"
-__realese__ = "14-october-2025"
+__realese__ = "12-December-2025"
 __email__ = "hinamatsuriairin@gmail.com"
 __repo__ = "https://github.com/Airinchan818/LittleLearn"
 __youtube__ = "https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY"
@@ -172,11 +172,13 @@ def tan(x) :
     return x.tan()
 
 def clip(vector_or_matriks,min_vals,max_vals) :
+
     if not isinstance(vector_or_matriks,GradientReflector) :
         vector_or_matriks = GradientReflector(vector_or_matriks)
     return vector_or_matriks.clip(min_vals=min_vals,max_vals=max_vals)
 
 def pow (tensor_or_scallar,pow_values) :
+
     if not isinstance(tensor_or_scallar,GradientReflector) :
         tensor_or_scallar = GradientReflector(tensor_or_scallar)
     return tensor_or_scallar.pow(power_values=pow_values)

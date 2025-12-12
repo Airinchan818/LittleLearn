@@ -3,8 +3,9 @@ from typing import Literal
 import traceback
 from littlelearn.DeepLearning import activations
 import littlelearn as ll 
+from littlelearn.DeepLearning.layers import Component
 
-class Dense :
+class Dense (Component):
     """
     Fully Connected (Dense) Layer.
 
@@ -50,6 +51,7 @@ class Dense :
                  inital_bias : Literal ['zeros','random'] = 'zeros',name="Dense",
                  use_Gradient_reflector:Literal[True,False] = True,
                  reduce_grad : Literal['mean','sum'] = 'sum'):
+        super().__init__()
         self.units = units 
         self.activation = activation
         self.weight = None 
@@ -156,7 +158,7 @@ class Dense :
             elif self.initial_bias == 'random' and self.initial_weight=='uniform' :
                 uniform_He = np.sqrt(6/Features)
                 self.bias = np.random.uniform(low=-uniform_He,high=uniform_He,size=(1,self.units))
-            self.parameter = (Features * self.units) + self.units
+            self.parameter = (Features * self.units) + self.unitsS
         except Exception as e :
             if self.units <= 0 or self.units is None :
                 e.add_note("recomended for 2 exponential values like = > example = 2,4,8,16,32....N for initial units")
@@ -239,7 +241,7 @@ class Dense :
 
 
 
-class Attention :
+class Attention (Component):
     """
     Transformer-style Attention Layer (Single Head)
 
@@ -304,6 +306,7 @@ class Attention :
                 stop_jacobian = True ,
                 derivative_func : Literal['Jacobian','Alternative'] = 'Alternative',
                 use_Gradient_Reflector : Literal[True,False] = True ) :
+        super().__init__()
         self.Masking = Masking 
         self.units = units 
         self.Weight_Q = None 
@@ -526,7 +529,7 @@ class Attention :
             traceback.print_exception(type(e),e,e.__traceback__)
             raise 
 
-class MultiHeadAttention :
+class MultiHeadAttention (Component):
     """
     Multi-Head Attention Layer.
 
@@ -563,6 +566,7 @@ class MultiHeadAttention :
                   stop_jacobian=True,
                   derivative_func : Literal['Jacobian','Alternative']  = 'Alternative',
                   use_gradient_reflector : Literal[True,False] = True ) :
+        super().__init__()
         self.units = units 
         self.parameter = 0 
         self.num_heads = num_heads
@@ -848,7 +852,7 @@ class MultiHeadAttention :
             raise 
 
 
-class Embedding :
+class Embedding (Component):
     """
         Embedding Layer
 
@@ -893,6 +897,7 @@ class Embedding :
     """
 
     def __init__ (self,input_dim,output_dim) :
+        super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.weight = None 
@@ -925,7 +930,7 @@ class Embedding :
         return out 
 
     
-class SimpleRNN :
+class SimpleRNN (Component):
     """
     SimpleRNN Layer (Elman-style recurrent cell)
 
@@ -958,6 +963,7 @@ class SimpleRNN :
     """
 
     def __init__ (self,units) :
+        super().__init__()
         self.units = units 
         self.weight_sequence = None 
         self.name = self.__class__.__name__
@@ -1004,7 +1010,7 @@ class SimpleRNN :
         return out 
     
 
-class LSTM :
+class LSTM (Component):
     """
     Long Short-Term Memory (LSTM) Layer.
 
@@ -1038,6 +1044,7 @@ class LSTM :
 
     def __init__ (self,units,return_state=False,return_sequence=False,weight_initial : Literal['normal','uniform'] = 'normal',
                   bias_initial : Literal ['zeros','random'] = 'zeros') :
+        super().__init__()
         self.units = units 
         self.return_sequence = return_sequence
         self.return_state = return_state
@@ -1170,7 +1177,7 @@ class LSTM :
         
         
         
-class GRU :
+class GRU (Component):
     """
         Gated Recurrent Unit (GRU) Layer.
 
@@ -1195,6 +1202,7 @@ class GRU :
     def __init__(self,units,return_sequence = False,return_hidden_state = False,
                  initial_weight : Literal['normal','uniform'] = 'normal',
                  initial_bias : Literal['zeros','random'] = 'zeros',) :
+        super().__init__()
         self.units = units 
         self.initial_weight = initial_weight
         self.initial_bias = initial_bias
@@ -1299,7 +1307,7 @@ class GRU :
         self.out_shape = out.shape 
         return out
 
-class LatenConnectedBlock :
+class LatenConnectedBlock (Component):
     """
         submodel block for Laten Connected Model (LCM) Layer
         -----------------------------------------------------
@@ -1320,18 +1328,28 @@ class LatenConnectedBlock :
             - NormMode : (Optional)
                 'prenorm' or 'postnorm' (default: 'postnorm')
             - LatenActivation : (Optional)
-                'sigmoid','gelu','swish' (default: 'sigmoid')
+                'sigmoid','gelu','swish' (default: 'sigmoid'),
+            - drop_rate : (float)
+                rate of dropout mechanism.
             
             Author:
             
             Candra Alpin Gunawan 
+
+            reference:
+            -------------
+            Candra Alpin Gunawan "LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"
+            Zenodo 01 November 2025" 
+            link:https://zenodo.org/records/17501400?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6Ijk2ZmJmNDg3LWI3MTYtNDVlNy05OWEzLTRiOTZkNGFhOTkzMyIsImRhdGEiOnt9LCJyYW5kb20iOiJiZTNhZjBmMGJmN2NmN2EyNWYyMzRiZWI3MjJkMjcwZCJ9.1Tcsiz_aRDDHbR2MmUdf2MkcUPbyKsI88dRGsv1O3MpA-dxBMk7B4JiSvfwk0RKG9SBzV7WGHY3mnth_iEwhTg 
     """
-    def __init__(self,units : int,
+    def __init__(self,units : int,drop_rate : float = 0.1,
                  NormMode : Literal['prenorm','postnorm'] = 'postnorm',
                  laten_activation : Literal['sigmoid','gelu','swish'] = 'sigmoid') :
+        super().__init__()
         self.step1_layers = Dense(units)
         self.step2_layers = Dense(units)
         self.magnitude_layers = Dense(units)
+        self.drop_out = ll.DeepLearning.layers.DropOut(rate=drop_rate)
         self.norm = ll.DeepLearning.layers.LayerNormalization()
 
         self.NormMode = NormMode
@@ -1368,6 +1386,7 @@ class LatenConnectedBlock :
             else :
                 raise RuntimeError("Activation not available")
             laten = step1 + step2 
+            laten = self.drop_out(laten)
             outputs = self.magnitude_layers(laten)
             outputs = activations.tanh(outputs)
             outputs = x + outputs 
@@ -1388,6 +1407,7 @@ class LatenConnectedBlock :
             else :
                 raise RuntimeError("Activation not available")
             laten = step1 + step2 
+            laten = self.drop_out(laten)
             outputs = self.magnitude_layers(laten)
             outputs = activations.tanh(outputs)
             self.outputs = x + outputs
@@ -1395,3 +1415,25 @@ class LatenConnectedBlock :
             return outputs 
         else :
             raise RuntimeError("NormMode just available for prenorm and postnorm")
+
+class LCTBlock (Component) :
+    def __init__ (self,d_model : int ,num_head : int ,drop_rate : float,causal_mask : bool = False) :
+        super().__init__()
+        self.attention = MultiHeadAttention(
+            units=d_model,num_heads=num_head,use_causal_mask=causal_mask
+        ) 
+        self.dropout = ll.DeepLearning.layers.DropOut(rate=drop_rate)
+        self.LCM = LatenConnectedBlock(
+            units=d_model,drop_rate=drop_rate,
+            NormMode='prenorm',laten_activation='gelu'
+        )
+        self.layernorm = ll.DeepLearning.layers.LayerNormalization()
+    
+    def __call__(self,x):
+        norm = self.layernorm(x)
+        attn =  self.attention(norm,norm,norm)
+        attn = self.dropout(attn)
+        x = x + attn 
+
+        x = self.LCM(x)
+        return x 

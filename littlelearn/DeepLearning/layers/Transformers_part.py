@@ -2,7 +2,7 @@ from littlelearn.DeepLearning import optimizers,activations,layers
 import littlelearn as ll 
 from typing import Literal
 
-class Feed_forward :
+class Feed_forward (ll.DeepLearning.layers.Component):
     """
         Feed forward (FFN)
         -----------------
@@ -21,6 +21,9 @@ class Feed_forward :
                 same with units in classif layers DNN this parameters actually work to give more non linear
                 information. ffn_dim always big more than d_model parameters cause at asumtion we want bring 
                 logits information from attention to look more deep non linear information.
+            
+            drop_rate : float
+                rate from dropout mechanism 
         
         example
         -------------
@@ -31,10 +34,12 @@ class Feed_forward :
         ------------
         Candra Alpin Gunawan
     """
-    def __init__(self,d_model,ffn_dim ) : 
+    def __init__(self,d_model : int ,ffn_dim : int ,drop_rate :float = 0.1  ) : 
+        super().__init__()
         self.ffn_dim = ffn_dim 
         self.linear_l = layers.Dense(ffn_dim,activation=activations.Gelu())
         self.out_linear = layers.Dense(d_model)
+        self.dropout = layers.DropOut(rate = drop_rate)
     
     def get_weight(self) : 
         """
@@ -50,8 +55,9 @@ class Feed_forward :
     def __call__ (self,x) : 
         x = self.linear_l(x)
         x = self.out_linear(x)
+        x = self.dropout(x)
         return x 
-class BlockEncoder_MHA:
+class BlockEncoder_MHA(ll.DeepLearning.layers.Component):
     """
     Transformer-style encoder block using Multi-Head Attention (MHA) 
     and a feed-forward network (FFN).
@@ -66,6 +72,7 @@ class BlockEncoder_MHA:
         num_head (int): Number of attention heads.
         d_model (int): Dimensionality of the model (hidden size).
         ffn (int): Dimensionality of the feed-forward layer.
+        drop_rate (float): dropout rate
     
     example
     ---------
@@ -78,7 +85,7 @@ class BlockEncoder_MHA:
     
     """
 
-    def __init__(self, num_head: int, d_model: int, ffn: int,
+    def __init__(self, num_head: int, d_model: int, ffn: int,drop_rate: float = 0.1,
                  NormMode  : Literal['postnorm','prenorm'] = 'postnorm'):
         """
         Initialize the encoder block layers.
@@ -88,11 +95,15 @@ class BlockEncoder_MHA:
             d_model (int): Dimensionality of the model (hidden size).
             ffn (int): Dimensionality of the feed-forward layer.
             NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
+            drop_rate (float): drop out rate" 
         """
+        super().__init__()
         self.num_head = num_head
         self.d_model = d_model
         self.ffn = ffn
         self.Normode = NormMode
+        self.drop_out1 = layers.DropOut(rate=drop_rate)
+
 
         self.Multihead_Attention = layers.MultiHeadAttention(
             units=self.d_model, 
@@ -101,7 +112,8 @@ class BlockEncoder_MHA:
 
         self.feed_forward = Feed_forward(
             d_model=self.d_model, 
-            ffn_dim=self.ffn
+            ffn_dim=self.ffn,
+            drop_rate=drop_rate
         )
 
         self.normal1 = layers.LayerNormalization()
@@ -135,6 +147,7 @@ class BlockEncoder_MHA:
         if self.Normode == 'prenorm' : 
             attnnorm = self.normal1(x) 
             attn = self.Multihead_Attention(attnnorm,attnnorm,attnnorm)
+            attn = self.drop_out1(attn)
             attn = attn + x 
 
             ffnNorm = self.normal2(attn)
@@ -144,6 +157,7 @@ class BlockEncoder_MHA:
         elif self.Normode == 'postnorm' :
 
             attn = self.Multihead_Attention(x, x, x)
+            attn = self.drop_out1(attn) 
             attn = self.normal1(attn + x)
 
 
@@ -153,7 +167,7 @@ class BlockEncoder_MHA:
         else :
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
-class BlockDecoder_MHA_cross:
+class BlockDecoder_MHA_cross(ll.DeepLearning.layers.Component):
     """
     Transformer-style decoder block with both self-attention and cross-attention.
 
@@ -169,6 +183,7 @@ class BlockDecoder_MHA_cross:
         num_head (int): Number of attention heads.
         d_model (int): Dimensionality of the model (hidden size).
         ffn (int): Dimensionality of the feed-forward layer.
+        drop_rate (float): rate of dropout mechanism. 
     
     Example
     ----------
@@ -180,7 +195,7 @@ class BlockDecoder_MHA_cross:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, num_head: int, d_model: int, ffn: int,
+    def __init__(self, num_head: int, d_model: int, ffn: int,drop_rate : float = 0.1,
                  NormMode  : Literal['postnorm','prenorm'] = 'postnorm'):
         """
         Initialize the decoder block layers.
@@ -189,17 +204,22 @@ class BlockDecoder_MHA_cross:
             num_head (int): Number of attention heads.
             d_model (int): Dimensionality of the model (hidden size).
             ffn (int): Dimensionality of the feed-forward layer.
-            NormMode (optional) : Normalization mode, either 'postnorm' or 'prenorm'.
+            NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
+            drop_rate (float): drop rate for dropout mechanism
         """
+        super().__init__()
         self.num_head = num_head
         self.d_model = d_model
         self.ffn = ffn
         self.Normode = NormMode
-
+        self.drop_out1 = layers.DropOut(rate=drop_rate)
+        self.drop_out2 = layers.DropOut(rate=drop_rate)
+ 
 
         self.feed_forward = Feed_forward(
             d_model=self.d_model,
-            ffn_dim=self.ffn
+            ffn_dim=self.ffn,
+            drop_rate=drop_rate
         )
 
 
@@ -260,10 +280,12 @@ class BlockDecoder_MHA_cross:
         if self.Normode == 'prenorm' :
             attnnorm1 = self.normal1(x) 
             attn1 = self.MultiHead_attn(attnnorm1,attnnorm1,attnnorm1)
+            attn1 = self.drop_out1(attn)
             attn1 = attn1 + x
 
             attnnorm2 = self.normal2(cross_attn)
             attncross = self.MultiHead_attn2(attn1,attnnorm2,attnnorm2)
+            attncross = self.drop_out2(attncross) 
             attncross = attncross + attn1
 
             ffn = self.normal3(attncross)
@@ -272,10 +294,12 @@ class BlockDecoder_MHA_cross:
             return ffn 
         elif self.Normode == 'postnorm' :
             attn = self.MultiHead_attn(x, x, x)
+            attn = self.drop_out1(attn)
             attn = self.normal1(attn + x)
 
 
             cross = self.MultiHead_attn2(attn, cross_attn, cross_attn)
+            cross = self.drop_out2(cross)
             cross = self.normal2(cross + attn)
 
             ffn = self.feed_forward(cross)
@@ -287,7 +311,7 @@ class BlockDecoder_MHA_cross:
         
 
 
-class BlockEncoder_Attention:
+class BlockEncoder_Attention(ll.DeepLearning.layers.Component):
     """
     Transformer-style encoder block using single-head Attention 
     (instead of Multi-Head Attention) and a feed-forward network.
@@ -302,7 +326,8 @@ class BlockEncoder_Attention:
         d_model (int): Dimensionality of the model (hidden size).
         ffn_dim (int): Dimensionality of the feed-forward layer.
         NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
-    
+        drop_rate (float): rate of dropout mechanism.
+
     Example
     -------------
         layers = BlockEncoder_Attention(d_model=32,ffn_dim=128) \n
@@ -313,7 +338,7 @@ class BlockEncoder_Attention:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, d_model: int, ffn_dim: int,
+    def __init__(self, d_model: int, ffn_dim: int,drop_rate : float = 0.1,
                  NormMode: Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initialize the encoder block layers.
@@ -321,15 +346,20 @@ class BlockEncoder_Attention:
         Args:
             d_model (int): Dimensionality of the model (hidden size).
             ffn_dim (int): Dimensionality of the feed-forward layer.
+            drop_rate (float): rate of dropout mechanism. 
+
         """
+        super().__init__()
         self.d_model = d_model
         self.ffn = ffn_dim
         self.NormMode = NormMode
+        self.drop_out1 = layers.DropOut(rate=drop_rate) 
 
 
         self.feed_forward = Feed_forward(
             d_model=self.d_model,
-            ffn_dim=self.ffn
+            ffn_dim=self.ffn,
+            drop_rate=drop_rate
         )
 
 
@@ -373,6 +403,7 @@ class BlockEncoder_Attention:
         if self.NormMode == 'prenorm' :
             attnnorm = self.normal1(x)
             attn = self.Attention(attnnorm, attnnorm, attnnorm)
+            attn = self.drop_out1(attn)
             attn = attn + x
 
             ffnNorm = self.normal2(attn)
@@ -392,7 +423,7 @@ class BlockEncoder_Attention:
         else :
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
-class BlockDecoders_Attention_cross:
+class BlockDecoders_Attention_cross(ll.DeepLearning.layers.Component):
     """
     Transformer-style decoder block using single-head attention for both 
     self-attention and cross-attention, followed by a feed-forward network.
@@ -409,6 +440,7 @@ class BlockDecoders_Attention_cross:
         d_model (int): Dimensionality of the model (hidden size).
         ffn_dim (int): Dimensionality of the feed-forward network.
         NormMode(optional): Normalization mode, either 'postnorm' or 'prenorm'.
+        drop_rate(float): rate pf dropout mechanism.   
     
     Example
     ---------
@@ -420,7 +452,7 @@ class BlockDecoders_Attention_cross:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, d_model: int, ffn_dim: int,
+    def __init__(self, d_model: int, ffn_dim: int,drop_rate : float = 0.1,
                  NormMode : Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initialize the decoder block layers.
@@ -429,13 +461,17 @@ class BlockDecoders_Attention_cross:
             d_model (int): Dimensionality of the model (hidden size).
             ffn_dim (int): Dimensionality of the feed-forward layer.
         """
+        super().__init__()
         self.d_model = d_model
         self.ffn = ffn_dim
         self.NormMode = NormMode
+        self.drop_out1 = layers.DropOut(rate=drop_rate)
+        self.drop_out2 = layers.DropOut(rate=drop_rate) 
 
         self.feed_forward = Feed_forward(
             d_model=d_model,
-            ffn_dim=self.ffn
+            ffn_dim=self.ffn,
+            drop_rate=drop_rate
         )
 
         self.Attention1 = layers.Attention(
@@ -492,10 +528,12 @@ class BlockDecoders_Attention_cross:
         if self.NormMode == 'prenorm' :
             attnnorm1 = self.normal1(x)
             attn1 = self.Attention1(attnnorm1, attnnorm1, attnnorm1)
+            attn1 = self.drop_out1(attn)
             attn1 = attn1 + x
 
             attnnorm2 = self.normal2(cross_attn)
             attncross = self.Attention2(attn1, attnnorm2, attnnorm2)
+            attncross = self.drop_out2(attncross)
             attncross = attncross + attn1
 
             ffnNorm = self.normal3(attncross)
@@ -504,9 +542,11 @@ class BlockDecoders_Attention_cross:
             return ffn
         elif self.NormMode == 'postnorm' :
             attn = self.Attention1(x, x, x)
+            attn = self.drop_out1(attn)
             attn = self.normal1(attn + x)
 
             cross = self.Attention2(attn, cross_attn, cross_attn)
+            cross = self.drop_out2(cross)
             cross = self.normal2(cross + attn)
 
             ffn = self.feed_forward(cross)
@@ -517,7 +557,7 @@ class BlockDecoders_Attention_cross:
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
         
 
-class BlockDecoder_MHA:
+class BlockDecoder_MHA(ll.DeepLearning.layers.Component):
     """
     Transformer-style decoder block with Multi-Head Self-Attention (MHA) 
     followed by a feed-forward network (FFN).
@@ -533,6 +573,7 @@ class BlockDecoder_MHA:
         d_model (int): Dimensionality of the model (hidden size).
         ffn (int): Dimensionality of the feed-forward layer.
         NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
+        drop_rate(float): rate of dropout mechanism.
     
     Example
     ----------
@@ -544,7 +585,7 @@ class BlockDecoder_MHA:
         Candra Alpin Gunawan
     """
 
-    def __init__(self, num_head: int, d_model: int, ffn: int,
+    def __init__(self, num_head: int, d_model: int, ffn: int,drop_rate : float = 0.1,
                  NormMode : Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initialize the decoder block layers.
@@ -553,15 +594,19 @@ class BlockDecoder_MHA:
             num_head (int): Number of attention heads.
             d_model (int): Dimensionality of the model (hidden size).
             ffn (int): Dimensionality of the feed-forward layer.
+            drop_rate(float): rate of dropout mechanism. 
         """
+        super().__init__()
         self.num_head = num_head
         self.d_model = d_model
         self.ffn = ffn
         self.NormMode = NormMode
+        self.drop_out1 = layers.DropOut(rate=drop_rate) 
 
         self.feed_forward = Feed_forward(
             self.d_model,
-            ffn_dim=self.ffn
+            ffn_dim=self.ffn,
+            drop_rate=drop_rate
         )
 
 
@@ -610,6 +655,7 @@ class BlockDecoder_MHA:
         if self.NormMode == 'prenorm' :
             attnnorm = self.normal1(x)
             attn = self.MultiHead_attn(attnnorm, attnnorm, attnnorm)
+            attn = self.drop_out1(attn)
             attn = attn + x
 
             ffnNorm = self.normal2(attn)
@@ -629,7 +675,7 @@ class BlockDecoder_MHA:
         else : 
             raise RuntimeError("NormMode only support 'prenorm' or 'postnorm' ")
 
-class BlockDecoder_attention:
+class BlockDecoder_attention(ll.DeepLearning.layers.Component):
     """
     A Transformer Decoder Block with Attention and Feed-Forward Network.
 
@@ -644,6 +690,7 @@ class BlockDecoder_attention:
         Attention (layers.Attention): Multi-head attention mechanism.
         normal1 (layers.LayerNormalization): First normalization layer.
         normal2 (layers.LayerNormalization): Second normalization layer.
+        drop_rate (float): rate of dropout mechanism.  
     
     Example
     ---------
@@ -655,7 +702,7 @@ class BlockDecoder_attention:
     Candra Alpin Gunawan
     """
 
-    def __init__(self, d_model : int, ffn_dim : int,
+    def __init__(self, d_model : int, ffn_dim : int,drop_rate : float = 0.1,
                  NormMode : Literal['postnorm', 'prenorm'] = 'postnorm'):
         """
         Initializes the decoder block.
@@ -665,12 +712,14 @@ class BlockDecoder_attention:
             ffn_dim (int): Dimension of the feed-forward network.,
         NormMode (optional): Normalization mode, either 'postnorm' or 'prenorm'.
         """
+        super().__init__()
         self.d_model = d_model
         self.ffn = ffn_dim
         self.NormMode = NormMode
+        self.drop_out1 = layers.DropOut(rate=drop_rate)
         
 
-        self.feed_forward = Feed_forward(self.d_model, ffn_dim=self.ffn)
+        self.feed_forward = Feed_forward(self.d_model, ffn_dim=self.ffn,drop_rate=drop_rate)
         
 
         self.Attention = layers.Attention(self.d_model, Masking=True)
@@ -715,15 +764,17 @@ class BlockDecoder_attention:
         if self.NormMode == 'prenorm' :
             attnnorm = self.normal1(x)
             attn = self.Attention(attnnorm, attnnorm, attnnorm)
+            attn = self.drop_out1(attn)
             attn = attn + x
 
             ffnNorm = self.normal2(attn)
-            ffn = self.feed_forward(ffnNorm)
+            ffn = self.feed_forward(ffnNorm)          
             ffn = ffn + attn
             return ffn
         elif self.NormMode == 'postnorm' :
         
             attn = self.Attention(x, x, x)
+            attn = self.drop_out1(attn)
             attn = self.normal1(attn + x)
 
             ffn = self.feed_forward(attn)

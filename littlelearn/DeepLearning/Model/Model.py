@@ -1,8 +1,9 @@
 import numpy as np 
-from typing import Literal 
+from typing import Literal
 import traceback
 from littlelearn.DeepLearning import optimizers
 import matplotlib.pyplot as plt 
+
 
 class Sequential :
     """
@@ -130,10 +131,12 @@ class Sequential :
             epochs is your iteration model training estimination 
 
         """
+      
+      
+
         try :
             if self.__build_status is False  :
                 raise RuntimeError("The model must call build_model first")
-            
             for epoch in range(epochs) :
                 out = x 
                 y_pred = self.__call__(out)
@@ -157,32 +160,38 @@ class Sequential :
 
             if isinstance(self.__optimizer,optimizers.Adam) :
                 w = self.get_weight()
-                self.__optimizer.apply_weight(w)
+                if self.__optimizer.model_weight is None : 
+                    self.__optimizer.apply_weight(w)
                 self.__optimizer.forward_in_weight()
 
             if isinstance(self.__optimizer,optimizers.Rmsprop) :               
                 w = self.get_weight()
-                self.__optimizer.apply_weight(self.__weight_tmp)
+                if self.__optimizer.model_weight is None :
+                    self.__optimizer.apply_weight(self.__weight_tmp)
                 self.__optimizer.forward_in_weight()
 
             if isinstance(self.__optimizer,optimizers.Momentum) :             
                 w = self.get_weight()
-                self.__optimizer.apply_weight(self.__weight_tmp)
+                if self.__optimizer.model_weight is None :
+                    self.__optimizer.apply_weight(self.__weight_tmp)
                 self.__optimizer.forward_in_weight()
             
             if isinstance(self.__optimizer,optimizers.AdamW) :
                 w = self.get_weight()
-                self.__optimizer.apply_weight(w)
+                if self.__optimizer.model_weight is None :
+                    self.__optimizer.apply_weight(w)
                 self.__optimizer.forward_in_weight()
             
             if isinstance(self.__optimizer,optimizers.Adamax) :
                 w = self.get_weight()
-                self.__optimizer.apply_weight(w)
+                if self.__optimizer.model_weight is None : 
+                    self.__optimizer.apply_weight(w)
                 self.__optimizer.forward_in_weight()
             
             if isinstance(self.__optimizer,optimizers.Lion) :
                 w = self.get_weight()
-                self.__optimizer.apply_weight(w)
+                if self.__optimizer.model_weight is None:
+                    self.__optimizer.apply_weight(w)
                 self.__optimizer.forward_in_weight()
 
 
@@ -206,7 +215,9 @@ class Sequential :
         plt.title(self.name + " loss")
         plt.ylabel("loss values")
         plt.xlabel("epoch per step ")
-        plt.plot(np.arange(len(loss)),loss)
+        plt.plot(np.arange(len(loss)),loss,color='red',label='loss')
+        plt.grid(True)
+        plt.legend()
         plt.show()
     
     def plot_graph_execution (self) :
@@ -818,3 +829,137 @@ class AutoBuildModel :
     def get_weight(self) :
         if isinstance(self.__model,Sequential) :
             return self.__model.get_weight()
+
+class Trainer :
+    """
+        Trainer 
+        --------------
+        Trainer is Class Trainer spesially for Custom Model inheritrance by Component Class. 
+
+        Parameter:
+        ---------------
+            Model: Component
+                model object for training target
+            datasets: Dataset
+                custom datasets class that inheritance to Dataset class
+        
+        how to use:
+        -------------------
+            ```
+
+                trainer = Trainer(model,datasets)
+                trainer.build_model(Adam(),BinaryCrossentropy()) 
+                model_trained = trainer.run(batch_size=32,verbose=1,epochs=10,shuffle=True)
+
+
+            ```
+
+        Author
+        -----------------
+        Candra Alpin Gunawan
+    """
+    def __init__ (self,Model,datasets):
+        from littlelearn.DeepLearning.layers import Component
+        from littlelearn.preprocessing import DataLoader,Dataset
+   
+        if not isinstance(Model,Component) :
+            raise ValueError("Model must inheritance from Component class")
+        if not isinstance(datasets,Dataset) :
+            raise ValueError("datasets must class object inheretince from datasets class")
+        
+        self.__loader = DataLoader(datasets)
+        self.model = Model 
+        self.loss_hist = []
+        self.optimizer = None 
+        self.loss_fn = None 
+        self.clipper = None 
+    
+    def build_model(self,optimizer ,loss_fn,clipper  = None ) :
+        """
+            just call it for initialing optimizer and loss function 
+            and when you need use clipper (gradient clipping) you can 
+            fill clipper parameter by gradientclipper class 
+
+        """
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn 
+        self.clipper = clipper
+
+
+    
+    def run (self,batch_size = 32,epochs = 1, verbose : Literal[0,1] = 0,shuffle : bool = False,
+             auto_clip : bool = False) :
+        """
+            run Trainer for training model, use this function for training model with 
+            Trainer
+
+            parameter: \n 
+                batch_size : int default = 32 
+                    batch_size for split datasets
+                
+                epochs : int default =1
+                    training loop range
+                
+                verbose : Literal [0,1] default = 0 
+                    for showing mean total_loss per epoch
+                
+                shuffle : bool default = False 
+                    for shuffling datasets while training run
+                
+                auto_clip : bool default = False 
+                    for use auto clipper when model training without need spesific set up Clipper.
+                    warning auto_clip can make training more stable but it can crashing training log
+                
+            output:
+            trained model : Component
+
+
+
+        """
+        if verbose not in [0,1] :
+            raise ValueError("Verbose just support by 0 or 1 ")
+        
+        if self.optimizer is None or self.loss_fn is None :
+            raise ValueError("you not build_model() yet, please to call build_model() before run Trainer")
+        
+        from tqdm import tqdm 
+        self.__loader.batch_size = batch_size
+        self.__loader.shuffle = shuffle
+        is_weight_in_optimizer = False   
+        
+        for epoch in range (epochs) :
+            total_loss = 0 
+            iterator = tqdm(self.__loader)
+            for x_train,y_train in iterator :
+                y_pred = self.model(x_train)
+                loss = self.loss_fn(y_train,y_pred)
+                if is_weight_in_optimizer is False :
+                    self.optimizer.apply_weight(self.model.parameter())
+                    is_weight_in_optimizer = True 
+
+                loss.backwardpass()
+                if self.clipper is not None :
+                    self.clipper.execute() 
+                if auto_clip is True and self.clipper is None :
+                    loss.AutoClipGradient()
+                self.optimizer.forward_in_weight()
+                loss.kill_grad()
+                total_loss += loss.tensor
+                iterator.set_description(f"^^ epoch : {epoch + 1} / {epochs} => loss : {loss.tensor} ^^")
+                iterator.set_postfix(loss = loss.tensor)
+            total_loss/=len(self.__loader)
+            self.loss_hist.append(total_loss)
+            if verbose == 1 :
+                print(f"epoch : {epoch + 1} /{epochs} || Mean of Loss : {total_loss}")
+        return self.model    
+
+    def plot_loss (self,title = "model loss"):
+        plt.title(title)
+        plt.xlabel("epoch")
+        plt.ylabel("loss")
+        plt.plot(self.loss_hist,color='red',label='loss')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+                
+    

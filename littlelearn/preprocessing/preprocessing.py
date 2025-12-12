@@ -1,5 +1,8 @@
 import numpy as np 
 import traceback
+import pandas as pd 
+from typing import Literal 
+import copy
 
 def PositionalEncodingSinusoidal (maxpos,d_model) :
 
@@ -68,6 +71,7 @@ class MinMaxScaller :
         self.epsilon = epsilon 
         self.min = None 
         self.max = None 
+        self.name = "MinMaxScaler"
     
     def fit(self,x) :
         self.min = np.min(x,axis=0)
@@ -130,6 +134,7 @@ class StandardScaller :
         self.epsilon = epsilon
         self.std = None 
         self.mean = None 
+        self.name = "StandardScaler"
     
     def fit(self,x) :
         self.mean = np.mean(x,axis=0,dtype=np.float32) 
@@ -178,6 +183,7 @@ class MaxAbsoluteScaller :
     def __init__ (self,epsilon = 1e-6) :
         self.epsilon = epsilon
         self.max_abs = None 
+        self.name = "MaxAbsoluteScaler"
     
     def fit(self,x) :
         abs_values = np.abs(x) + self.epsilon
@@ -242,6 +248,7 @@ class Tokenizer:
         self.__word = dict()
         self.len_vocab = None
         self.counter = 1
+        self.name = "Tokenizer"
 
     def fit_on_texts(self, texts):
         if not isinstance(texts, list):
@@ -281,7 +288,10 @@ class Tokenizer:
                     else :
                         seq.append(0)
             sequences.append(seq)
-        return np.array(sequences)
+        if padding_len is None :
+            return sequences
+        else :
+            return np.array(sequences)
 
 
 class LabelEncoder :
@@ -301,6 +311,7 @@ class LabelEncoder :
         self.class_idx = dict()
         self.idx_class = dict()
         self.__counter = 0
+        self.name = "LabelEncoder"
     
     def fit(self,data : list) :
         """
@@ -369,6 +380,7 @@ class OneHotEncoder :
     """
     def __init__ (self) :
         self.__encoder = LabelEncoder()
+        self.name = "OneHotEncoder"
     
     def fit(self,data:list):
         """
@@ -442,3 +454,189 @@ def label_to_onehot (x,class_num:int) :
         result.append(vector)
     return np.array(result)
 
+class AutoPreprocessing :
+    """
+        AutoPreprocessing 
+        --------------------
+        AutoPreprocessing class for preprocessing datasets (pandas DataFrame) by one function.
+
+        parameters:
+        ---------------
+            scalers_variant (Literal):
+                choice scaler variant: 'minmax','std','maxabsolute',None (default: std)
+
+            encoder_string(Literal):
+                choice encoder variant: 'tokenizer','label_encoder','one_hot' (default: label_encoder)
+        
+        how to use:
+        -----------------
+            autoprocess = AutoPreprocessing()\n
+            datasets = pd.read_csv(datasets)\n
+            autoprocess.train(datasets)\n
+            datasets = autoprocess.transform(datasets)
+        
+        output:
+        ----------
+        pandas.DataFrame()
+
+        author:
+        -----------
+        Candra Alpin Gunnawan
+    """
+    def __init__ (self,scalers_variant :Literal['minmax','std','maxabsolute',None] = 'std',
+                  encoder_string : Literal ['tokenizer','label_encoder','one_hot'] = 'label_encoder') :
+        
+        if encoder_string == 'tokenizer' and scalers_variant is not None :
+            raise RuntimeError("give None to scaler_variant for tokenizer encoder string ")
+        
+        else :
+            self.encoder = Tokenizer()
+        
+        if encoder_string == 'one_hot':
+            self.encoder = OneHotEncoder()
+        elif encoder_string == 'label_encoder':
+            self.encoder = LabelEncoder()
+        elif encoder_string not in ['tokenizer','label_encoder','one_hot'] :
+            raise RuntimeError(f"{encoder_string} not aivable here")
+        
+        if scalers_variant not in  ['minmax','std','maxabsolute',None] :
+            raise RuntimeError(f"{scalers_variant} is not aivable here")
+        else :
+            if scalers_variant == 'std' :
+                self.scaler = StandardScaller()
+            elif scalers_variant == 'minmax' :
+                self.scaler = MinMaxScaller(f_range=(0,1))
+            elif scalers_variant == 'maxabsolute' :
+                self.scaler = MaxAbsoluteScaller()
+            else :
+                self.scaler = None 
+        
+        self.train_status = False  
+    
+    def train (self,datasets : pd.DataFrame) :
+        """
+            train:
+            -------------
+            call function by:
+                autoprocess.train(datasets)
+            use this function before transform datasets 
+
+            paramters:
+            ----------------
+            datasets: pd.DataFrame 
+
+            output:
+            -----------
+            log training  
+        """
+        if not isinstance(datasets,pd.DataFrame) :
+            raise RuntimeError("datasets must converted to be pandas DataFrame")
+        colums = datasets.columns
+        self.c_string = list()
+        c_numeric = list()
+        for c in colums :
+            data = datasets[c].to_list()
+            if isinstance(data[0],str) :
+                self.encoder.fit(data)
+                self.c_string.append(c)
+                print(f"{self.encoder.name} has trained")
+            else :
+                c_numeric.append(c)
+        
+        if self.scaler is not None :
+            self.scaler_clone = list()
+
+            for i in range(len(c_numeric)) :
+                self.scaler_clone.append(copy.deepcopy(self.scaler)) 
+            
+            for i in range(len(c_numeric)) :
+                self.scaler_clone[i].name = c_numeric[i]
+            
+            for i in range(len(c_numeric)) :
+                
+                self.scaler_clone[i].fit(datasets[c_numeric[i]].values)
+                print(f"{self.scaler_clone[i].name} has trained ")
+        self.train_status = True 
+    
+    def transform (self,datasets : pd.DataFrame) :
+        """
+            transform:
+            ----------------
+            transform function call by:
+                autoprocess(datasets)
+            use it for transform raw dataframe to be preprocessed dataframe
+
+            paramters:
+            -------------
+                datasets:pd.DataFrame 
+            
+            output:
+            ---------
+            pd.DataFrame()
+        """
+        if not isinstance(datasets,pd.DataFrame) :
+            raise RuntimeError("datasets must converted to be pandas DataFrame")
+        for c in datasets.columns :
+            data = datasets[c].to_list()
+            if isinstance(data[0],str) :
+                datasets[c] = self.encoder.encod(data)
+            else :
+                if self.scaler is not None :
+                    for scalers in self.scaler_clone :
+                        if scalers.name == c :
+                            datasets[c] = scalers.scaling(datasets[c].values)
+                        else:
+                            continue
+        
+        return datasets
+    
+    def train_transform (self,datasets : pd.DataFrame) :
+        """ 
+            train_transform:
+            ----------------
+            call train_transform for train and transform datasets in one function. 
+
+            parameters:
+                datasets:pd.DataFrame
+            
+            output:
+            pd.DataFrame
+
+        """
+        self.train(datasets)
+        return self.transform(datasets)
+    
+
+class Dataset :
+    def __init__(self) :
+        pass 
+
+    def __getitem__ (self,idx) :
+        raise NotImplementedError
+    
+    def __len__(self) :
+        raise NotImplementedError
+
+class DataLoader:
+    def __init__(self, dataset, batch_size=32, shuffle=True):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+    def __len__(self) :
+        return (len(self.dataset) + self.batch_size -1 ) // self.batch_size
+
+    def __iter__(self):
+        self.indices = np.arange(len(self.dataset))
+        if self.shuffle:
+            np.random.shuffle(self.indices)
+
+        for start in range(0, len(self.indices), self.batch_size):
+            batch_idx = self.indices[start:start+self.batch_size]
+            batch = [self.dataset[i] for i in batch_idx]
+            yield self._collate(batch)
+
+    def _collate(self, batch):
+        x = np.array([b[0] for b in batch])
+        y = np.array([b[1] for b in batch])
+        return x, y

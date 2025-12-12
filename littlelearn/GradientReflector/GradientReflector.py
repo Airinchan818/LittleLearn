@@ -101,7 +101,7 @@ class GradientReflector :
         Author: Candra Alpin Gunawan 
         """
 
-    def __init__ (self,tensor,_children=(),_op='',_dtype=np.float32) :
+    def __init__ (self,tensor,_children=(),_op="",_dtype=np.float32) :
         self.tensor = np.array(tensor,dtype=_dtype)
         self.gradient =  np.zeros_like(self.tensor,dtype=_dtype)
         self.active_grad = active_grad_status
@@ -112,6 +112,7 @@ class GradientReflector :
         self.__norm_signal = None 
         self.__auto_clip = False 
         self.dtype = _dtype
+        self.__autoclip_log = False 
     
     def __repr__(self):
         return (f"(Tensor with shape : ({self.tensor.shape}) : \n  {self.tensor})")
@@ -163,6 +164,7 @@ class GradientReflector :
         return out 
     
     def pow (self,power_values) :
+
         if self.active_grad is True :
             out = GradientReflector(np.power(self.tensor,power_values),(self,),'pow')
         else :
@@ -218,7 +220,7 @@ class GradientReflector :
         out._backwardpass = _backward
         return out 
     
-    def __radd__ (self,other) : 
+    def __radd__ (self,other) :
         return self + other 
     
     def __rsub__ (self,other) :
@@ -2111,36 +2113,43 @@ class GradientReflector :
         self.__norm_signal = norm_values  
 
         if norm_values > 100:
-            print(f"⚠️  Warning: Gradient exploded is Critics ! Norm = {norm_values:.4f} → Clip level 6")
+            if self.__autoclip_log is True : 
+                print(f"⚠️  Warning: Gradient exploded is Critics ! Norm = {norm_values:.4f} → Clip level 6")
             self.__grad_expload_signal = 0.25
 
         elif 90 <= norm_values <= 100:
-            print(f"⚠️  Warning: Gradient exploded! Norm = {norm_values:.4f} → Clip level 5")
+            if self.__autoclip_log is True :
+                print(f"⚠️  Warning: Gradient exploded! Norm = {norm_values:.4f} → Clip level 5")
             self.__grad_expload_signal = 0.5
 
         elif 75 <= norm_values < 90:
-            print(f"⚠️  Warning: Gradient high! Norm = {norm_values:.4f} → Clip level 4")
+            if self.__autoclip_log is True:
+                print(f"⚠️  Warning: Gradient high! Norm = {norm_values:.4f} → Clip level 4")
             self.__grad_expload_signal = 0.75
 
         elif 20 <= norm_values < 75:
-            print(f"⚠️  Info: Moderate gradient. Norm = {norm_values:.4f} → Clip level 3")
+            if self.__autoclip_log is True :
+                print(f"⚠️  Info: Moderate gradient. Norm = {norm_values:.4f} → Clip level 3")
             self.__grad_expload_signal = 1.0
 
         elif 10 <= norm_values < 20:
-            print(f"🔹 Info: Stable gradient. Norm = {norm_values:.4f} → Clip level 2")
+            if self.__auto_clip is True :
+                print(f"🔹 Info: Stable gradient. Norm = {norm_values:.4f} → Clip level 2")
             self.__grad_expload_signal = 1.5
 
         elif 5 <= norm_values < 10:
-            print(f"🔹 Info: Very stable gradient. Norm = {norm_values:.4f} → Clip level 1")
+            if self.__autoclip_log is True :
+                print(f"🔹 Info: Very stable gradient. Norm = {norm_values:.4f} → Clip level 1")
             self.__grad_expload_signal = 2.0
          
         if 1e-8 < norm_values < 1e-5:
-            boost_factor = min(5.0 / norm_values, 1e4) 
-            print(f"🧊 Gradient vanishing detected! Norm = {norm_values:.8f} → Boost ×{boost_factor:.2f}")
+            boost_factor = min(5.0 / norm_values, 1e4)
+            if self.__autoclip_log is True : 
+                print(f"🧊 Gradient vanishing detected! Norm = {norm_values:.8f} → Boost ×{boost_factor:.2f}")
             self.__grad_expload_signal = boost_factor
             self.__norm_signal = norm_values
 
-    def AutoClipGradient (self) :
+    def AutoClipGradient (self,show_log  : bool = False) :
         """
         AutoClipGradient:
         -----------------
@@ -2178,7 +2187,7 @@ class GradientReflector :
         Written by : Candra Alpin Gunawan 
         """
         self.__auto_clip = True 
-
+        self.__autoclip_log = show_log
     def ___Auto_GradientClipping (self,grad) :
         signal_exploaded = self.__grad_expload_signal
         signal_norm_values = self.__norm_signal
@@ -2305,11 +2314,12 @@ class GradientReflector :
         def build(Node) :
             if Node not in visited :
                 visited.add(Node)
-                G.add_node(id(Node),label=Node._op)
-                for parent in Node._Node :
-                    p = parent() 
-                    G.add_edge(id(p),id(Node))
-                    build(p)
+                if Node is not None : 
+                    G.add_node(id(Node),label=Node._op)
+                    for parent in Node._Node :
+                        p = parent() 
+                        G.add_edge(id(p),id(Node))
+                        build(p)
 
         build(self)
         labels = nx.get_node_attributes(G,'label')
@@ -2317,4 +2327,4 @@ class GradientReflector :
         nx.draw(G,pos,with_labels=True,labels=labels,node_color = 'lightblue',arrows=True)
         plt.title("Gradient Reflector tracked graph operation")
         plt.show()
-    
+  

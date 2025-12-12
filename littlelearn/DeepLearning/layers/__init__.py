@@ -17,3 +17,9 @@ from .Transformers_part import BlockEncoder_Attention
 from .Transformers_part import BlockEncoder_MHA
 from .Layers import LatenConnectedBlock
 from .preprocessing_layers import DropOut
+from .preprocessing_layers import Component
+from .preprocessing_layers import normal_glorot
+from .preprocessing_layers import normal_he
+from .preprocessing_layers import uniform_glorot
+from .preprocessing_layers import uniform_he
+from .Layers import LCTBlock
