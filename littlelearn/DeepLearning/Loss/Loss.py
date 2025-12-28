@@ -1,6 +1,6 @@
 from typing import Literal
 import littlelearn as ll 
-class MeanSquareError :
+class MSELoss:
     """
     MeanSquareError (MSE)
     ---------------------
@@ -54,11 +54,17 @@ class MeanSquareError :
         float
             The computed mean squared error loss.
         """
-        if not isinstance(y_pred,ll.GradientReflector) :
-            y_pred = ll.GradientReflector(y_pred)
-        return y_pred.meansquareerror(y_true)
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor
+        
+        return ll.GradientReflector.mse_loss(
+            y_train=y_true,y_pred=y_pred
+        )
 
-class MeanAbsoluteError :
+class MAELoss :
     """
     MeanAbsoluteError (MAE)
     -----------------------
@@ -95,9 +101,16 @@ class MeanAbsoluteError :
         float
             The computed mean absolute error loss.
         """
-        if not isinstance(y_pred,ll.GradientReflector) :
-            y_pred = ll.GradientReflector(y_pred)
-        return y_pred.meanabsoluteerror(y_true)
+
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        if isinstance(y_true,ll.Tensor) : 
+            y_true = y_true.tensor
+        
+        return ll.GradientReflector.mae_loss(
+            y_train=y_true,y_pred=y_pred
+        )
 
 class BinaryCrossentropy :
     """
@@ -150,63 +163,17 @@ class BinaryCrossentropy :
         float
             The computed binary crossentropy loss.
         """
-        if not isinstance(y_pred,ll.GradientReflector) :
-            y_pred = ll.GradientReflector(y_pred)
-        return y_pred.binarycrossetnropy(y_true,epsilon=self.epsilon,from_logits=self.from_logits)
-
-class CaterigocallCrossentropy :
-    """
-    CategoricalCrossentropy
-    ------------------------
-    This class implements the Categorical Crossentropy loss function, which is used
-    in multi-class classification tasks where each sample belongs to one of several classes.
-
-    Parameters
-    ----------
-    from_logits : bool, default=False
-        If True, `y_pred` is expected to be raw logits and will be internally passed through
-        a softmax function. If False, `y_pred` is expected to be a probability distribution.
-    
-    epsilon : float, default=1e-6
-        A small constant for numerical stability to avoid taking the logarithm of zero.
-
-    Example:
-    --------
-        cce = CategoricalCrossentropy(from_logits=True)
-        loss = cce(y_true, y_pred)
-
-    Notes:
-    ------
-    The input `y_pred` will be wrapped using `GradientReflector` if not already,
-    to support gradient computation during backpropagation.
-
-    Author : Candra Alpin Gunawan 
-    """
-
-    def __init__(self,from_logits=False,epsilon=1e-6) :
-        self.epsilon = epsilon
-        self.from_logits = from_logits
-
-    def __call__ (self,y_true,y_pred) :
-        """
-        Computes the Categorical Crossentropy loss between the true labels and predictions.
-
-        Parameters
-        ----------
-        y_true : array-like
-            Ground truth one-hot encoded labels.
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+            
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor
         
-        y_pred : array-like or GradientReflector
-            Model predictions. These can be logits or probabilities depending on `from_logits`.
-
-        Returns
-        -------
-        float
-            The computed categorical crossentropy loss.
-        """
-        if not isinstance(y_pred,ll.GradientReflector) :
-            y_pred = ll.GradientReflector(y_pred)
-        return y_pred.categoricallcrossentropy(y_true,self.epsilon,from_logits=self.from_logits)
+        if self.from_logits :
+            ll.GradientReflector.sigmoid(y_pred)
+        
+        return ll.GradientReflector.bce_loss(y_true,y_pred,
+                                             epsilon=self.epsilon)
 
 class HuberLoss :
     """
@@ -257,11 +224,15 @@ class HuberLoss :
         float
             The computed Huber loss.
         """
-        if not isinstance(y_pred,ll.GradientReflector) :
-            y_pred = ll.GradientReflector(y_pred)
-        return y_pred.hubber_loss(y_true,self.delta)
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor 
 
-class SparseCategoricallCrossentropy :
+        return ll.GradientReflector.huber_loss(y_true,y_pred,delta=self.delta)
+    
+class SparseCategoricalCrossentropy :
     """
     SparseCategoricalCrossentropy
     -----------------------------
@@ -291,9 +262,8 @@ class SparseCategoricallCrossentropy :
     Author : Candra Alpin Gunawan 
     """
 
-    def __init__(self,from_logits=False,epsilon=1e-6) :
+    def __init__(self,epsilon=1e-6) :
         self.epsilon = epsilon
-        self.from_logits = from_logits
     
     def __call__ (self,y_true,y_pred) :
         """
@@ -312,6 +282,113 @@ class SparseCategoricallCrossentropy :
         float
             The computed sparse categorical crossentropy loss.
         """
-        if not isinstance(y_pred,ll.GradientReflector) :
-            y_pred = ll.GradientReflector(y_pred)
-        return y_pred.sparsecategoricallcrossentropy(y_true,self.epsilon,from_logits=self.from_logits)
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor
+        
+        return ll.GradientReflector.sparse_cross_entropy(
+            y_true,y_pred
+        )
+    
+class OneHotCrossEntropy :
+    def __call__ (self,y_true,y_pred) :
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor
+        
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        return ll.GradientReflector.cross_entropy(y_true,y_pred)
+
+class MaskedOneHotCrossEntropy :
+    def __call__(self,y_true,y_pred,mask) :
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor
+        
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        return ll.GradientReflector.masked_cross_entropy(
+            y_true,y_pred,mask=mask
+        )
+    
+class MaskedSparseCrossEntropy :
+    def __call__ (self,y_true,y_pred,mask) :
+
+        if not isinstance(y_pred,ll.Tensor) :
+            y_pred = ll.Tensor(y_pred)
+        
+        if isinstance(y_true,ll.Tensor) :
+            y_true = y_true.tensor
+        
+        return ll.GradientReflector.masked_sparse_cross_entropy(y_true,y_pred,mask)
+
+
+def bce_loss(y_true,y_pred,epsilon = 1e-5) :
+    if not isinstance(y_pred,ll.Tensor) :
+        y_pred = ll.Tensor(y_pred)
+    
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor 
+    
+    return ll.GradientReflector.bce_loss(y_true,y_pred,epsilon=epsilon)
+
+def mse_loss (y_true,y_pred) :
+    if not isinstance(y_pred,ll.Tensor) :
+        y_pred = ll.Tensor(y_pred)
+    
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor
+    
+    return ll.GradientReflector.mse_loss(y_true,y_pred)
+
+def mae_loss (y_true,y_pred) :
+    if not isinstance(y_pred,ll.Tensor):
+        y_pred =  ll.Tensor(y_pred)
+    
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor 
+    
+    return ll.GradientReflector.mse_loss(y_true,y_pred)
+
+def sparse_crossentropy (y_true,y_pred) :
+    
+    if not isinstance(y_pred,ll.Tensor) :
+        y_pred = ll.Tensor(y_pred)
+    
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor 
+    
+    return ll.GradientReflector.sparse_cross_entropy(y_true,y_pred)
+
+def onehot_crossentropy (y_true,y_pred) :
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor
+    
+    if not isinstance(y_pred,ll.Tensor) :
+        y_pred = ll.Tensor(y_pred)
+    
+    
+    return ll.GradientReflector.cross_entropy(y_true,y_pred)
+
+def masked_sparse_crossentropy (y_true,y_pred,mask) :
+    if not isinstance(y_pred,ll.Tensor) :
+        y_pred = ll.Tensor(y_pred)
+    
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor 
+    
+    return ll.GradientReflector.masked_sparse_cross_entropy(y_true,y_pred,mask)
+
+def masked_onehot_crossentropy (y_true,y_pred,mask) :
+    if isinstance(y_true,ll.Tensor) :
+        y_true = y_true.tensor
+    
+    if not isinstance(y_pred,ll.Tensor) :
+        y_pred = ll.Tensor(y_pred)
+        
+    return ll.GradientReflector.masked_cross_entropy(
+        y_true,y_pred,mask
+    )

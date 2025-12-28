@@ -28,7 +28,6 @@ with its own architecture, philosophy, and backend engine.
 ## 📚 Included Ecosystem:
 
 - Deep learning (Dense, attention, LSTM, etc.)
-- Classical machine learning
 - Auto tools like `AutoBuildModel` and `AutoTransformers` for one-liner construction.
 - All powered by `Gradient Reflector` — the gradient engine with unique features like per-node clipping.
 
@@ -43,196 +42,264 @@ Candra Alpin Gunawan
 """
 __name__ = "littlelearn"
 __author__ = "Candra Alpin Gunawan"
-__version__ = "0.2.1"
+__version__ = "1.0.0"
 __license__ = "Apache 2.0"
-__realese__ = "12-December-2025"
+__realese__ = "29-December-2025"
 __email__ = "hinamatsuriairin@gmail.com"
 __repo__ = "https://github.com/Airinchan818/LittleLearn"
 __youtube__ = "https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY"
 
-from . import DeepLearning 
-from . import ClassicMachineLearning
 from . import preprocessing
+from .tensor import *
 from .GradientReflector import GradientReflector
-from .GradientReflector import non_active_grad
-from . import GradientTools
+from .GradientReflector import Node
+from . import DeepLearning
 
-def convert_to_tensor(x) :
 
-    """
-    for convert a matriks or array, to tensor that suport Gradient Reflector operation. 
+def to_tensor (x,dtype = float32,device="cpu",requires_grad=True) :
+    if isinstance (x,Tensor) :
+        print("warning data has being Tensor, is just rebuild Tensor in the same Tensor object")
+        x = x.tensor
+    return Tensor(x,dtype=dtype,device=device,requires_grad=requires_grad)
 
-    How to use : 
+def matmul (a,b,transpose_a=False,transpose_b=False) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    if not isinstance(b,Tensor) :
+        b = Tensor(b)
+    return a.matmul(b,tranpose_a=transpose_a,transpose_b=transpose_b)
 
-    import LittleLearn as ll 
-    import numpy as np 
-
-    a = np.array([2,4,5,2,1]) \n 
-    a= ll.convert_to_tensor(a)
-    """
-
-    return GradientReflector(x)
-
-def matmul(matrix_a,matrix_b,transpose_a=False,transpose_b=False):
-    """
-    high dimention tensor operation . matrix_a and matrix_b parameter for array or tensor,
-    transpose_a will transpose last dimention A array like (a,b,c) => (a,c,b) and transpose_b 
-    will transpose (a,b,c) => (a,c,b) for matrix_b.\n 
+def sum(a,axis=None,keepdims=False) :
+    if not isinstance(a,Tensor) : 
+        a = Tensor(a)
     
-    how to use : 
+    return a.sum(axis=axis,keepdims=keepdims)
 
-    import LittleLearn as ll 
-    import numpy as np 
+def mean(a,axis=None,keepdims=False) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.mean(axis=axis,keepdims=keepdims)
 
-    a = np.array(([[1,2,3],[2,3,4]]))\n
-    b = np.array(([[2,4,2],[5,3,2]]))\n
+def log (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.log()
 
-    c = ll.matmul(a,b,transpose_a=True) 
+def exp(a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.exp()
 
-    """
-    try:
-        if not isinstance (matrix_a,GradientReflector) :
-            matrix_a = GradientReflector(matrix_a)
-        return matrix_a.matmul(matrix_b,transpose_a=transpose_a,transpose_b=transpose_b)
-    except :
-        if matrix_a.shape == matrix_b.shape :
-            raise RuntimeError(f"mismatch {matrix_a.shape} vs {matrix_b.shape} you have transpose a one of matriks")
+def flatten (a) :
+  if not isinstance(a,Tensor) :
+      a = Tensor(a)
+  
+  return a.flatten()
 
-def sqrt(x) :
-    """
-    for count sqrt tensor. \n
-    how to use  : 
+def expand_dims (a,axis=0) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.expand_dims(axis=axis)
 
-    a = 100 
+def squezze (a,axis=None) :
+  if not isinstance(a,Tensor) :
+      a = Tensor(a)
+  
+  return a.squezze(axis=axis)
 
-    import LittleLearn as ll 
+def unsquezze (a,axis=None) :
+    if not isinstance(a,Tensor) :
+        a= Tensor(a)
+    
+    return a.unsquezze(axis=axis)
 
-    ll.sqrt(a)
+def sumprod (a,b) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    if not isinstance(b,Tensor) :
+        b = Tensor(b)
+    
+    return a.sumprod(a,b)
 
-    """
-    if not isinstance(x,GradientReflector) : 
-        x = convert_to_tensor(x)
-    return x.sqrt()
+def var(a,axis=None,keepdims=False) :
+    if not isinstance(a,Tensor)  :
+        a = Tensor(a)
+    
+    return a.var(axis=axis,keepdims=keepdims)
 
+def std(a,axis=None,keepdims=False,epsilon=1e-5) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.std(axis=axis,keepdims=keepdims,epsilon=1e-5)
 
-def dot (matriks_a,matriks_b) :
-    """
-    function for dot product multiple at tensor \n 
-    how to use : \n 
-    import LiitleLearn as ll \n
-    import numpy as np \n 
+def log2 (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.log2()
 
-    a = np.array([2,3,4])\n
-    b = np.array([3,2,4])\n
+def log10(a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.log10()
 
-    ll.dot(q,b)
-    """
-    if not isinstance (matriks_a,GradientReflector):
-        matriks_a = GradientReflector(matriks_a)
-    return matriks_a.dot(matriks_b)
+def log1p(a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.log1p()
 
-def sin(a) :
-    if not isinstance(a,GradientReflector) :
-        a = GradientReflector(a)
-    return a.sin()
+def reshape(a,new_shape: tuple) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    return a.reshape(newshape=new_shape)
 
-def cos (a) :
-    if not isinstance(a,GradientReflector):
-        a = GradientReflector(a) 
-    return a.cos()
+def transpose(a,new_shape:tuple) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.reshape(newshape=new_shape)
 
-def reshape(matriks,shape=()):
-    try :
-        if not isinstance(matriks,GradientReflector):
-            matriks = GradientReflector(matriks)
-        return matriks.reshape(shape=shape)
-    except :
-        if len(shape) == 0:
-            raise RuntimeError("you have to gift a new shape for this matriks")
-        raise RuntimeError (f"can't reshape at {shape}")
+def sqrt (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.sqrt()
 
-def log(x) :
-    if not isinstance(x,GradientReflector) :
-        x = GradientReflector(x)
-    return x.log()
+def clip(a,min_vals :float,max_vals:float) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.clip(min_vals,max_vals)
 
-def exp(x) :
-    if not isinstance(x,GradientReflector) :
-        x = GradientReflector(x)
-    return x.exp()
+def max(a,axis=None,keepdims=False) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.max(axis=axis,keepdims=keepdims)
 
-def sum (x,axis=None,keepdims=False) :
-    if not isinstance(x,GradientReflector) :
-        x = GradientReflector(x)
-    return x.sum(axis=axis,keepdims=keepdims)
+def min (a,axis=None,keepdims=False) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.min(axis=axis,keepdims=keepdims)
 
-def tan(x) :
-    if not isinstance(x,GradientReflector) :
-        x = GradientReflector(x)
-    return x.tan()
+def argmax(a,axis=None) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.argmax(axis=axis)
 
-def clip(vector_or_matriks,min_vals,max_vals) :
+def abs (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.abs()
 
-    if not isinstance(vector_or_matriks,GradientReflector) :
-        vector_or_matriks = GradientReflector(vector_or_matriks)
-    return vector_or_matriks.clip(min_vals=min_vals,max_vals=max_vals)
+def pad(a,pad_with,mode='constant',constant_value=0) :
+    if not isinstance(a,Tensor) :
+        a =  Tensor(a)
+    
+    return a.pad(pad_with=pad_with,mode=mode,constant_value=constant_value)
 
-def pow (tensor_or_scallar,pow_values) :
+def broadcast_to (a,shape :tuple) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.broadcast_to(shape)
 
-    if not isinstance(tensor_or_scallar,GradientReflector) :
-        tensor_or_scallar = GradientReflector(tensor_or_scallar)
-    return tensor_or_scallar.pow(power_values=pow_values)
+def erf (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.erf()
 
-def ones_tensor (shape=()) :
-    from numpy import ones
-    if len(shape) == 0 :
-        raise RuntimeError(f"shape is {shape} can't make ones data")
-    return GradientReflector(ones(shape=shape))
+def sinh (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.sinh()
 
-def ones_like_tensor (x) : 
-    from numpy import ones_like 
-    if len(x.shape) <= 0:
-        raise RuntimeError(f"tensor like is {x.shape} can't make ones data ")
-    if isinstance(x,GradientReflector) : 
-        x = x.tensor 
-    return GradientReflector(ones_like(x)) 
+def consh (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.cosh()
 
-def zeros_tensor (shape=()) : 
-    from numpy import zeros 
-    if len(shape) == 0 :
-        raise RuntimeError(f"shape is {shape} can't make zeros data")
-    return GradientReflector(zeros(shape=shape))
+def tan (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.tan()
 
-def zeros_like_tensor(x) :
-    from numpy import zeros_like 
-    if len(x.shape) <=0 :
-        raise RuntimeError(f"tensor like {x.shape} can.t make zeros data")
-    return GradientReflector(zeros_like(x))
+def floor (a) : 
+    if not isinstance(a,Tensor) : 
+        a = Tensor(a)
+    
+    return a.floor()
 
-def random_rand(*args : int) :
-    from numpy.random import rand 
-    return GradientReflector(rand(*args))
+def ceil (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.ceil()
 
-def random_normal(loc=0,std=1,shape=()) : 
-    from numpy.random import normal 
+def rint (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.rint()
 
-    if len(shape) <= 0 :
-        raise RuntimeError(f"Error shape is {shape} can't make data")
-    return GradientReflector(normal(loc=loc,scale=std,size=shape))
+def reciprocal (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.reciprocal()
 
-def random_uniform (low = -1,hight=1,shape=()) :
-    from numpy.random import uniform 
+def sign (a) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.sign()
 
-    if len(shape) <= 0 :
-        raise RuntimeError(f"error shape is {shape} can't make data")
-    return GradientReflector(uniform(low=low,high=hight,size=shape))
+def identity (a) :
+    if not isinstance(a,Tensor) : 
+        a = Tensor(a)
+    
+    return a.identity()
 
-def expand_dims (x,axis) :
-    if not isinstance(x,GradientReflector) :
-        x = GradientReflector(x)
-    return x.expand_dims(axis=axis)
+def concat (tensor_list : list,axis=0) :
+    if not isinstance(tensor_list[0],Tensor) :
+        for i in range(len(tensor_list)) :
+            tensor_list[i] = Tensor(tensor_list[i])
+    
+    return GradientReflector.concat(tensor_list,axis=axis)
 
-def arange_tensor (stop) :
-    from numpy import arange
-    from numpy import int32
-    return GradientReflector(arange(stop),_dtype=int32)
+def logsumexp (a,axis = None,keepdims=False) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.logsumexp(axis=axis,keepdims=keepdims)
+
+def logaddexp (a,b) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    
+    return a.logaddexp(a,b)
+
+def argmin (a,axis=None) :
+    if not isinstance(a,Tensor) :
+        a = Tensor(a)
+    return a.argmin(axis=axis)
+
+def where (condition,a,b) :
+   return GradientReflector.where(condition=condition,a=a,b=b)

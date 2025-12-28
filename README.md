@@ -1,17 +1,17 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (0.2.2) date : (12-December-2025): 
+update Version (1.0.0) date : (29-December-2025): 
+    
+    - change numeric backend be jax.numpy() 
+    - fix memories leak problem 
+    - fix LSTM failure training bug
+    - fix Attention failure training bug 
+    - add Tensor class mechanism 
+    - Gradient Reflectot Being autodiff non data can use by general case 
+    - add Node Mechanism
+    - add general Tensor ops
 
-    - add new preprocessing AutoPreprocessing 
-    - tensor.plot_trace_operation bug fixed 
-    - add dropout mechanism in AutoTransformers 
-    - add dropout mechanism in LCM   
-    - add abstract class Component for Custom Model 
-    - add LCT Block sub model / layers for new Post-transformers model 
-    - add Trainer class for Custom Model training more easy 
-    - all layers and sub model inheritance on Component Class 
-        
-     
+warning : on this update we remove so many feature because paradims changed.      
 
 
 
@@ -52,7 +52,6 @@ LittleLearn provides multiple levels of abstraction:
 ## 📦 Ecosystem Features
 - ✅ Deep learning modules: Dense, LSTM, attention mechanisms, and more
 
-- 🧮 Classical ML components (in progress)
 
 - 🤖 Automated tools like AutoBuildModel
 
@@ -68,37 +67,30 @@ LittleLearn provides multiple levels of abstraction:
 
 🚀 Quick Example : 
 ```bash
-import littlelearn as ll 
+    import littlelearn as ll 
+    import littlelearn.DeepLearning as dl 
 
-x_train = 'your datasets'
-y_train = 'your target'
+    model = dl.layers.Sequential([
+        dl.layers.Linear(20,32),
+        dl.activations.Relu(),
+        dl.layers.Linear(32,1)
+    ]) 
+    model.train()
+    x_train,y_train= datasets()
+    optimizer = dl.optimizers.Adam(model.parameter())
 
-model = ll.DeepLearning.Model.AutoBuildModel(type='mlp-binaryclassification',level='balance')
-model.fit(x_train,y_train.reshape(-1,1),epochs=10,verbose=1)
-```
-With AutoTransformers :
-```bash
-    from littlelearn import DeepLearning as dl 
-    optimizer = dl.optimizers.Adam()
-    loss = dl.loss.SparseCategoricallCrossentropy()
-    transformers_model = dl.Model.AutoTransformers(
-        d_model=128,vocab_size=10000,ffn_size=512,
-        maxpos=100,type='decoder-nlp',level='balance',
-        Head_type='Multi',PosEncoding='learn'
-    )
-    x_train,y_train = "your datasets "
-    
     for epoch in range(100) :
-        outputs = transformers_model(x_train)
-        l = loss(y_train,outputs)
-        l.AutoClipGradient()
-        l.backwardpass()
-        optimizer.apply_weight(transformers_model.get_weight())
-        optimizer.forward_in_weight()
-        l.kill_grad()
-        print(f"epoch {epoch + 1} || loss : {l.get_tensor()}")
+        y_pred = model(x_train)
+        loss = dl.loss.mse_loss(y_train,y_pred)
+        loss.backwardpass()
+        optimizer.step()
+        loss.reset_grad()
+        print(loss.tensor)
+    
+    model.inference()
+    model.save("model.npz")
 
-```
+``` 
 📌 Disclaimer
 While inspired by well-known frameworks, LittleLearn is built entirely from scratch with its own mechanics.
 It is suitable for:
@@ -119,6 +111,5 @@ suport this project : https://ko-fi.com/alpin92578
 Candra Alpin Gunawan
 📧 hinamatsuriairin@gmail.com
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
-
 
 youtube : https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY

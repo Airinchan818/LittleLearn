@@ -1,9 +1,9 @@
-import numpy as np 
+import jax.numpy as np
 import traceback
 import pandas as pd 
 from typing import Literal 
 import copy
-
+import re  
 def PositionalEncodingSinusoidal (maxpos,d_model) :
 
     """
@@ -254,6 +254,7 @@ class Tokenizer:
         if not isinstance(texts, list):
             raise RuntimeError("Data must be list of strings")
         for sentence in texts:
+            sentence = re.sub(r"[^a-zA-Z0-9\s]","",sentence)
             for word in sentence.strip().split():
                 word = word.lower()
                 if word not in self.__word:
@@ -276,6 +277,7 @@ class Tokenizer:
         for sentence in texts:
             seq = []
             if padding_len is None:
+                sentence = re.sub(r"[^a-zA-Z0-9\s]","",sentence)
                 for word in sentence.strip().split():
                     idx = self.__word.get(word.lower(), 0)
                     seq.append(idx)

@@ -1,44 +1,140 @@
 import littlelearn as ll
+from typing import Literal
 
-def relu (x) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.relu()
-
-def leaky_relu (x,alpha=1e-6) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.leaky_relu(alpha=alpha)
-
-def swish(x,beta=1.0) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.swish(Beta=beta)
-
-def gelu (x) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.gelu()
+Global_engine_grad = ll.GradientReflector()
+def relu (x,device : Literal["cpu","gpu"]="cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(data=x,
+                      device=device,
+                      requires_grad=requires_grad)
+    return Global_engine_grad .relu(x)
     
-def softmax(x,axis=None,keepdims=False,epsilon=1e-6,use_crossentropy=True) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.softmax(axis=axis,keepdims=keepdims,epsilon=epsilon,use_categorical=use_crossentropy)
 
-def sigmoid (x) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.sigmoid()
+def leaky_relu (x,alpha=1e-6,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .leaky_relu(x,alpha=alpha)
 
-def linear (x) :
-    if not isinstance(x,ll.GradientReflector) :
-        x = ll.GradientReflector(x)
-    return x.linear()
+def swish(x,beta=1.0,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .swish(x,beta)
 
-def tanh (x) :
-    if not isinstance(x,ll.GradientReflector) : 
-        x = ll.convert_to_tensor(x)
-    return x.tanh()
+def gelu (x,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    return Global_engine_grad .gelu_tanh(x)
+
+    
+def softmax(x,axis=None,keepdims=False,
+            use_crossentropy=True,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .softmax(
+        x,axis=axis,keepdims=keepdims,
+        with_crossentropy=use_crossentropy
+    )
+
+def sigmoid (x,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .sigmoid(x)
+
+def tanh (x,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .tanh(x)
+
+def log_sigmoid (x,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad.logsigmoid(x)
+
+def log_softmax(x,axis=None,keepdims=False
+                ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .log_softmax(x,axis=axis,keepdims=keepdims)
+
+def hard_max (x,axis=None,keepdims=False
+              ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+
+    return Global_engine_grad .hardmax(x,axis=axis,keepdims=keepdims)
+
+def hard_sigmoid (x,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .hardsigmoid(x)
+
+def hard_tanh (x,min_value=-1.0,max_value=1.0
+               ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad.hardtanh(x,min_val=min_value,max_val=max_value)
+
+def hard_shrink(x,lambda_:float=0.5
+                ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad.hardshrink(x,lambda_)
+    
+def relu6 (x,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad.relu6(x)
+
+def celu (x,alpha : float 
+          ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad.celu(x,alpha=alpha)
+
+def selu(x,lambda_=1.0507,alpha=1.673
+        ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True ) :
+
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad.selu(x,lambda_,alpha)
+
+def softplus (x ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .softplus(x)
+
+def softsign (x ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+    
+    return Global_engine_grad .softsign(x)
+
+def elu (x,alpha = 1.0 ,device : Literal["cpu","gpu"] = "cpu",requires_grad=True) :
+    if not isinstance(x,ll.Tensor) :
+        x = ll.Tensor(x,device=device,requires_grad=requires_grad)
+        
+    return Global_engine_grad .elu(x,alpha=alpha)
+
+
+
 
 class Relu :
     """
@@ -79,10 +175,8 @@ class Relu :
         GradientReflector
             Output after applying ReLU activation.
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.relu()
-
+        return Global_engine_grad .relu(x)
+    
 class Sigmoid :
     """
     Sigmoid
@@ -119,10 +213,8 @@ class Sigmoid :
         GradientReflector
             Output after applying Sigmoid activation.
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.sigmoid()
-
+        return Global_engine_grad.sigmoid(x)
+    
 class Leaky_Relu :
     """
     Leaky_Relu (Leaky Rectified Linear Unit)
@@ -154,7 +246,7 @@ class Leaky_Relu :
     Author : Candra Alpin Gunawan 
     """
 
-    def __init__(self,alpha=1e-2):
+    def __init__(self,alpha=1e-3):
         self.aplha = alpha 
     
     def __call__ (self,x) :
@@ -171,9 +263,7 @@ class Leaky_Relu :
         GradientReflector
             Output after applying Leaky ReLU activation.
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.leaky_relu(alpha=self.aplha)
+        return Global_engine_grad .leaky_relu(x,self.aplha)
 
 class Swish :
     """
@@ -223,20 +313,18 @@ class Swish :
         GradientReflector
             Output after applying the Swish activation.
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.swish(Beta=self.beta)
+        return Global_engine_grad .swish(x,self.beta)
 
 class Gelu :
     """
-    Gelu (Gaussian Error Linear Unit - Sigmoid Approximation)
+    Gelu (Gaussian Error Linear Unit - tanh Approximation)
     ----------------------------------------------------------
     This class implements the GELU activation function using the sigmoid-based approximation.
     GELU is a smooth, non-linear activation that has gained popularity in modern architectures
     such as transformers (e.g., BERT, GPT).
 
     In this implementation, the activation is approximated as:
-        GELU(x) ≈ x * sigmoid(1.702 * x)
+        GELU(x) ≈ x * 0.5 * tanh(sqrt(2 / 3.14) * (x + 0.044715 * x^3 ))
 
     This approximation is more efficient than the original definition using the standard
     normal distribution CDF, while still maintaining strong empirical performance.
@@ -255,7 +343,7 @@ class Gelu :
     """
     def __call__(self, x) :
         """
-        Applies the GELU activation function (sigmoid approximation) element-wise.
+        Applies the GELU activation function (tanh approximation) element-wise.
 
         Parameters
         ----------
@@ -267,9 +355,7 @@ class Gelu :
         GradientReflector
             Output after applying the GELU activation.
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.gelu()
+        return Global_engine_grad.gelu_tanh(x)
 
 class Tanh :
     """
@@ -309,9 +395,7 @@ class Tanh :
         GradientReflector
             Output after applying tanh activation.
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.tanh()
+        return Global_engine_grad .tanh(x)
 
 class Softmax :
     """
@@ -376,49 +460,78 @@ class Softmax :
         GradientReflector
             Output probabilities (summing to 1 along the specified axis).
         """
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        
-        return x.softmax(axis = self.axis,keepdims=self.keepdims,epsilon=self.epsilon,use_categorical=self.use_categorical)
+        return Global_engine_grad.softmax(x,axis=self.axis,keepdims=self.keepdims,
+                                            with_crossentropy=self.use_categorical)
     
-class Linear :
-    """
-    Linear Activation
-    ------------------
-    Implements the identity (linear) activation function. This function simply 
-    returns the input as-is and is typically used in regression output layers 
-    or when no non-linearity is desired.
+class Relu6 :
 
-    Mathematically:
-        linear(x) = x
-
-    This activation is useful as a baseline or when you want the model to output
-    raw scores or continuous values without transformation.
-
-    Methods
-    -------
-    __call__(x)
-        Applies the identity activation to the input.
-
-    Parameters
-    ----------
-    x : array-like or GradientReflector
-        Input tensor or raw values. If not already a GradientReflector,
-        it will be automatically converted.
-
-    Returns
-    -------
-    GradientReflector
-        The input tensor, unchanged, but wrapped with autodiff tracking if needed.
-
-    Example
-    -------
-    >>> linear = Linear()
-    >>> output = linear(input_tensor)
-
-    Author : Candra Alpin Gunawan 
-    """
     def __call__(self,x) :
-        if not isinstance(x,ll.GradientReflector) :
-            x = ll.convert_to_tensor(x)
-        return x.linear()
+        return Global_engine_grad .relu6(x)
+
+class Celu :
+
+    def __init__(self,alpha : float = 1.0) :
+        self.alpha = alpha 
+
+    def __call__ (self,x) :
+        return Global_engine_grad .celu(x,self.alpha)
+    
+
+class Selu :
+    def __init__ (self,lambda_=1.0507,alpha=1.673) :
+        self.lambda_ = lambda_ 
+        self.alpha = alpha 
+
+    def __call__ (self,x) :
+        return Global_engine_grad .selu(x,lambda_=self.lambda_,alpha=self.alpha)
+
+class Elu :
+    def __init__ (self,alpha :float = 1.0) :
+        self.alpha = alpha 
+    
+    def __call__ (self,x) :
+        return Global_engine_grad .elu(x,self.alpha)
+
+class LogSoftmax :
+    def __init__(self,axis=-1,keepdims=True) :
+        self.axis =axis 
+        self.keepdims = keepdims
+    
+    def __call__(self,x) :
+
+        return Global_engine_grad .log_softmax(x,self.axis,self.keepdims)
+
+class LogSigmoid :
+    def __call__ (self,x) :
+        return Global_engine_grad .logsigmoid(x)
+
+class HardSigmoid :
+    def __call__(self,x) :
+        Global_engine_grad .hardsigmoid(x)
+
+class HardTanh :
+    def __init__ (self,min_val = -1.0,max_val = 1.0) :
+        self.min_val = min_val 
+        self.max_val = max_val
+        
+    
+    def __call__(self,x) :
+
+        return Global_engine_grad .hardtanh(x,min_val=self.min_val,max_val=self.max_val)
+
+class HardShrink :
+    def __init__(self,lambda_=0.5) :
+        self.lambda_ = lambda_
+
+    def __call__(self,x) :
+        return Global_engine_grad .hardshrink(x,lambda_=self.lambda_)
+
+
+class Softplus :
+    def __call__ (self,x) :
+        return Global_engine_grad .softplus(x)
+    
+class Softsign :
+
+    def __call__ (self,x) :
+        return Global_engine_grad .softsign(x)
