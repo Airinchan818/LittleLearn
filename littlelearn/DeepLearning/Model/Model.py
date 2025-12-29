@@ -2,7 +2,7 @@ from typing import Literal
 from littlelearn.DeepLearning import layers as la 
 from littlelearn.DeepLearning import activations as activ
 from littlelearn.DeepLearning import optimizers
-from littlelearn import arange,expand_dims
+import littlelearn as ll
 import matplotlib.pyplot as plt 
 import math 
 
@@ -267,9 +267,9 @@ class MHATransformers (la.Component) :
         B,S = x.shape 
         x = self.embedding(x)
         x = x * self.scale
-        pos  = arange(0,S,device=x.device)
+        pos  = ll.arange(0,S,device=x.device)
         pos = self.pos_learn(pos)
-        pos = expand_dims(pos,axis=0)
+        pos = ll.expand_dims(pos,axis=0)
         x = x + pos 
         x = self.block(x)
         return x 
@@ -301,9 +301,9 @@ class Transformers (la.Component) :
         B,S = x.shape 
         x = self.embedding(x)
         x = x * self.scale
-        pos  = arange(0,S,device=x.device)
+        pos  = ll.arange(0,S,device=x.device)
         pos = self.pos_learn(pos)
-        pos = expand_dims(pos,axis=0)
+        pos = ll.expand_dims(pos,axis=0)
         x = x + pos 
         x = self.block(x)
         return x 
@@ -325,9 +325,9 @@ class LatentConnectedModel(la.Component) :
         B,S = x.shape 
         x = self.embedding(x)
         x = x * self.scale
-        pos = arange(0,S,device=x.device)
+        pos = ll.arange(0,S,device=x.device)
         pos = self.pos_learn(pos)
-        pos = expand_dims(pos,axis=0)
+        pos = ll.expand_dims(pos,axis=0)
         x = x+pos 
         x = self.block(x)
         return x 
@@ -366,9 +366,9 @@ class LatentConnectedTransformers (la.Component) :
         B,S = x.shape
         x = self.embedding(x)
         x= x * self.scale
-        pos = arange(0,S,device=x.device)
+        pos = ll.arange(0,S,device=x.device)
         pos = self.pos_learn(x)
-        x = expand_dims(x)
+        x = ll.expand_dims(x)
         x = x + pos 
         x = self.block(x)
         return x 
