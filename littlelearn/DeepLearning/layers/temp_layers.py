@@ -262,7 +262,7 @@ class Dropout(Component) :
     
     def forwardpass(self,x) :
         rate = 1 - self.rate
-        m = ll.binomial(1,rate,shape=x.shape)
+        m = ll.binomial(1,rate,shape=x.shape,device=x.device)
         x = m * x / rate 
         return x 
 

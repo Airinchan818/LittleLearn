@@ -16,7 +16,7 @@ Candra Alpin Gunawan
 """
 __name__ = "littlelearn"
 __author__ = "Candra Alpin Gunawan"
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __license__ = "Apache 2.0"
 __realese__ = "29-December-2025"
 __email__ = "hinamatsuriairin@gmail.com"

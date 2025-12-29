@@ -367,12 +367,13 @@ def tril (tensor : Tensor,diagonal=0,dtype=float32,device : Literal["cpu","gpu"]
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 
-def binomial (n :float , p : float , shape : tuple ,max_random_keys = 10) :
+def binomial (n :float , p : float , shape : tuple ,max_random_keys = 10,
+              device = "cpu") :
     max_random = random.randint(0,max_random_keys)
     data = jax.random.binomial(
         key=jax.random.PRNGKey(max_random),n=n,p=p,shape=shape
     )
-    return Tensor(data=data)
+    return Tensor(data=data,device=device)
 
 def top_k (logits : Tensor,top_k = 1) :
     logits = jax.lax.top_k(logits.tensor,top_k)
