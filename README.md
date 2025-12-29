@@ -1,6 +1,6 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.0.0) date : (29-December-2025): 
+update Version (1.0.1) date : (29-December-2025): 
     
     - change numeric backend be jax.numpy() 
     - fix memories leak problem 
@@ -10,6 +10,9 @@ update Version (1.0.0) date : (29-December-2025):
     - Gradient Reflectot Being autodiff non data can use by general case 
     - add Node Mechanism
     - add general Tensor ops
+    - replacing AutoBuildModel and AutoTransformers with instant model in Model
+    - Tokenizer bug fixed 
+    - add DiagonalSSM layers with Gating mechanism 
 
 warning : on this update we remove so many feature because paradims changed.      
 
@@ -39,21 +42,11 @@ LittleLearn is an experimental and original machine learning framework built fro
 Touch the Big World with Little Steps.
 Whether you want rapid prototyping or total model control — LittleLearn gives you both.
 
-LittleLearn provides multiple levels of abstraction:
-
-| Usage Style               | Tools Available                           |
-|--------------------------|-------------------------------------------|
-| 💬 One-liner models      | `AutoBuildModel`, `AutoTransformers` |
-| ⚙️ Modular models        | `Sequential`, `ModelByNode` (soon)        |
-| 🔬 Low-level experiment  | Layers, Loss, Optimizer manual calls      |
-| 🧠 Custom gradients      | `GradientReflector` engine backend        |
-
-
 ## 📦 Ecosystem Features
 - ✅ Deep learning modules: Dense, LSTM, attention mechanisms, and more
 
 
-- 🤖 Automated tools like AutoBuildModel
+- 🤖 instant model by Model Module
 
 - 🔄 Custom training loops with full backend access
 
@@ -103,7 +96,6 @@ It is suitable for:
 
 - 🔧 Custom low-level operations
 
-This is an Beta-stage project — expect bugs, sharp edges, and lots of potential.
 
 suport this project : https://ko-fi.com/alpin92578
 
