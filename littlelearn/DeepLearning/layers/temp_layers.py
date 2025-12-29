@@ -13,7 +13,7 @@ class Parameter(Tensor):
             super().__init__(
                 data=tensor.tensor,
                 dtype=dtype,
-                requires_grad=True
+                requires_grad=False
               
             )
         else:
@@ -21,7 +21,7 @@ class Parameter(Tensor):
             super().__init__(
                 data=tensor,
                 dtype=dtype,
-                requires_grad=True
+                requires_grad=False
             )
     
     def float_16_param (self) :

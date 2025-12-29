@@ -12,7 +12,7 @@ class Optimizer:
 
 
 class Adam(Optimizer):
-    def __init__(self, params, lr=1e-3, beta=(0.9, 0.999), eps=1e-8,clip_norm :float = 0.0):
+    def __init__(self, params, lr=1e-3, beta=(0.9, 0.999), eps=1e-7,clip_norm :float = 0.0):
         super().__init__()
 
         for p in params:
@@ -42,9 +42,12 @@ class Adam(Optimizer):
                 new_m.append(self.m[i])
                 new_v.append(self.v[i])
                 continue
-            if self.clipnorm > 0.0 :
-                scale = jnp.linalg.norm(g)
-                g = g * (self.clipnorm / scale  )
+            if self.clip_norm > 0.0:
+                norm = jnp.linalg.norm(g)
+                if norm > self.clipnorm :
+                    scale = self.clipnorm / norm
+                    g = g * scale
+
 
             m = self.beta1 * self.m[i] + (1 - self.beta1) * g
 
@@ -70,7 +73,7 @@ class Adam(Optimizer):
 
 
 class AdamW (Optimizer) :
-    def __init__(self,param : list,lr = 1e-3,beta=(0.9,0.99),decay=4e-3,epsilon=1e-8,clip_norm : float = 0.0) :
+    def __init__(self,param : list,lr = 1e-3,beta=(0.9,0.999),decay=4e-3,epsilon=1e-7,clip_norm : float = 0.0) :
         super().__init__()
         for p in param :
             if not isinstance(p,Parameter) :
@@ -88,33 +91,41 @@ class AdamW (Optimizer) :
     def step(self):
         t = self.iterator
         new_m = []
-        new_v = [] 
-        for i,param in enumerate(self.params) :
-            g = param.grad 
-            if g is None :
+        new_v = []
+
+        for i, param in enumerate(self.params):
+            g = param.grad
+            if g is None:
                 new_m.append(self.m[i])
                 new_v.append(self.v[i])
                 continue
-            if self.clip_norm > 0.0 :
-                norm = jnp.linalg.norm(g)
-                g = g * (self.clip_norm / norm)
 
-            m = self.beta1* self.m[i] + (1 - self.beta1) * g 
-            v = self.beta2 * self.v[i] + (1 - self.beta2) * (g**2)
+            if self.clip_norm > 0.0:
+                norm = jnp.linalg.norm(g)
+                if norm > self.clip_norm :
+                    scale = self.clip_norm / norm 
+                    g = g * scale
+
+            m = self.beta1 * self.m[i] + (1 - self.beta1) * g
+            v = self.beta2 * self.v[i] + (1 - self.beta2) * (g ** 2)
+
+            m_hat = m / (1 - self.beta1 ** (t + 1))
+            v_hat = v / (1 - self.beta2 ** (t + 1))
+
+            update = self.lr * m_hat / (jnp.sqrt(v_hat) + self.eps)
+
+            param.tensor = param.tensor - update - self.lr * self.decay * param.tensor
+
             new_m.append(m)
             new_v.append(v)
-            m = m / (1 - self.beta1** (t+1))
-            v = v / (1 - self.beta2**(t+1))
 
-            update =  self.lr * m / (jnp.sqrt(v) + self.eps)
-            param.tensor = param.tensor - (update + self.decay * param.tensor) 
-        
         self.m = new_m
         self.v = new_v
-        self.iterator +=1 
+        self.iterator += 1
+
 
 class Adamax (Optimizer) :
-    def __init__(self,param : list,lr = 1e-3,beta=(0.9,0.99),epsilon=1e-8,clip_norm=0.0) :
+    def __init__(self,param : list,lr = 1e-3,beta=(0.9,0.999),epsilon=1e-7,clip_norm=0.0) :
         super().__init__()
         for p in param :
             if not isinstance(p,Parameter) :
@@ -141,9 +152,13 @@ class Adamax (Optimizer) :
                 new_m.append(self.m[i])
                 new_mn.append(self.mn[i])
                 continue
-            if self.clip_norm > 0.0 :
+
+            if self.clip_norm > 0.0:
                 norm = jnp.linalg.norm(g)
-                g = g * (self.clip_norm / norm)
+                if norm > self.clip_norm:
+                    scale = self.clip_norm / norm 
+                    g = g * scale
+
             
             m = self.beta1 * self.m[i] + (1 - self.beta1) * g 
             new_m.append(m)
@@ -159,7 +174,7 @@ class Adamax (Optimizer) :
         self.iterator +=1 
 
 class RMSProp (Optimizer) :
-    def __init__ (self,param : list,lr=1e-3,beta=0.99,epsilon=1e-8,clip_norm=0.0) :
+    def __init__ (self,param : list,lr=1e-3,beta=0.999,epsilon=1e-6,clip_norm=0.0) :
         super().__init__()
         for p in param :
             if not isinstance(p,Parameter) :
@@ -183,7 +198,8 @@ class RMSProp (Optimizer) :
                 continue
             if self.clip_norm > 0.0 :
                 norm = jnp.linalg(g)
-                g = g * (self.clip_norm / norm)
+                if norm > self.clip_norm: 
+                    g = g * (self.clip_norm / norm)
             
             rms = self.beta * self.rms[i] + (1 - self.beta) * (g**2)
             new_rms.append(rms)
@@ -215,9 +231,11 @@ class Lion (Optimizer) :
                 new_m.append(self.m[i]) 
                 continue
             if self.clip_norm > 0.0 :
+                
                 norm = jnp.linalg.norm(g)
-                g = g * (self.clip_norm / norm)
-            
+                if norm  > self.clip_norm:
+                    g = g * (self.clip_norm / norm)
+                
             m = self.beta * self.m[i] + (1 - self.beta) * g 
             new_m.append(m)
             update = self.lr * jnp.sign(m)
