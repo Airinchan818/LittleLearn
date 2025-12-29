@@ -206,13 +206,12 @@ class Attention (Component) :
         self.return_attention = return_attention
         self.__add_bias = add_bias
     
-    def __created_causal (self,size) :
-        return 1 - ll.tril(ones(shape=(size,size)),diagonal=0)
+    def __created_causal (self,size,device) :
+        return 1 - ll.tril(ones(shape=(size,size)),diagonal=0,device=device)
     
     def __scaled_dot_product(self,Q,K,V,causal_mask = None):
-        dim_k = ll.sqrt(Tensor(data=K.shape[-1]))
-        logits = ll.matmul(Q,K,transpose_b=True) 
-        logits = logits / dim_k
+        dim_k = ll.to_tensor(K.shape[-1],device=Q.device)
+        logits = ll.matmul(Q,K,transpose_b=True) / ll.sqrt(dim_k)
         if causal_mask is not None :
             logits = logits + causal_mask
         score = ll.DeepLearning.activations.softmax(
@@ -237,7 +236,7 @@ class Attention (Component) :
         
         if self.is_causal_mask:
         
-            mask = self.__created_causal(q.shape[1]) * -1e9
+            mask = self.__created_causal(q.shape[1],device=q.device) * -1e9
 
             return self.__scaled_dot_product(q,k,v,mask)
         else :
@@ -379,8 +378,8 @@ class MultiHeadAttention (Component) :
         self.dim_k = embed_dim // num_head
 
     
-    def __create_causal_mask (self,size) :
-        return 1 - ll.tril(ones(shape=(size,size)),diagonal=0)
+    def __create_causal_mask (self,size,device) :
+        return 1 - ll.tril(ones(shape=(size,size)),diagonal=0,device=device)
     
         
     
@@ -391,7 +390,8 @@ class MultiHeadAttention (Component) :
         return X
     
     def __scaled_dot_product (self,Q,K,V,causal_mask=None):
-        score = ll.matmul(Q,K,transpose_b=True) / ll.sqrt(float(K.shape[-1]))
+        dim_k = ll.to_tensor(K.shape[-1],device=Q.device)
+        score = ll.matmul(Q,K,transpose_b=True) / ll.sqrt(dim_k)
         if causal_mask is not None :
             score = score + causal_mask
         
@@ -415,7 +415,7 @@ class MultiHeadAttention (Component) :
             v = self.__split_head(ll.matmul(values,self.wv))
         
         if self.use_causal_mask :
-            mask = self.__create_causal_mask(size=S) * -1e9
+            mask = self.__create_causal_mask(size=S,device=q.device) * -1e9
             output,attn = self.__scaled_dot_product(
                 Q=q,K=k,V=v,causal_mask=mask
             )
