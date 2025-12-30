@@ -31,6 +31,7 @@ class Tensor:
                  device: Literal["cpu", "gpu"] = "cpu",
                  requires_grad=False,_node : Node = None ):
         self.requires_grad = requires_grad
+        self.is_param = False 
 
         self.dtype = dtype
         self.device = device

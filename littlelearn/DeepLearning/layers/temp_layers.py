@@ -23,6 +23,8 @@ class Parameter(Tensor):
                 dtype=dtype,
                 requires_grad=False
             )
+        
+        self.is_param = True
     
     def float_16_param (self) :
         self.tensor = jnp.asarray(self.tensor,dtype=jnp.float16)

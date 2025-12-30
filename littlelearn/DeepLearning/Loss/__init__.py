@@ -2,7 +2,7 @@ from .Loss import MSELoss
 from .Loss import MAELoss
 from .Loss import BinaryCrossentropy
 from .Loss import OneHotCrossEntropy
-from .Loss import SparseCategoricalCrossentropy
+from .Loss import SparseCrossentropy
 from .Loss import MaskedSparseCrossEntropy
 from .Loss import MaskedOneHotCrossEntropy
 from .Loss import bce_loss

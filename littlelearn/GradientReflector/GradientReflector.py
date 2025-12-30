@@ -87,6 +87,25 @@ def adjust_shape(b, grad_shape):
             b = jnp.sum(b, axis=i, keepdims=True)
 
     return b
+def align_or_reduce_grad(grad, tensor):
+
+    if tensor.is_param:
+
+        g = grad
+        target_shape = tensor.tensor.shape
+
+
+        while g.ndim > len(target_shape):
+            g = g.sum(axis=0)
+
+        for i, (gs, ts) in enumerate(zip(g.shape, target_shape)):
+            if gs != ts:
+                g = g.sum(axis=i, keepdims=True)
+
+        return g.reshape(target_shape)
+    else:
+
+        return adjust_shape(grad, tensor.shape)
 
 
 def im2col(x, KH, KW, stride, pad):
@@ -140,7 +159,6 @@ def col2im(cols, x_shape, KH, KW, stride, pad):
     i = i0[:, None] + i1[None, :]
     j = j0[:, None] + j1[None, :]
 
-    # reshape agar match scatter
     cols_reshaped = cols.reshape(N, C*KH*KW, H_out*W_out)
 
     dx_padded = dx_padded.at[
@@ -217,23 +235,32 @@ class Conv2DBackward:
 
 class AddBackward:
     def __init__(self, node, a, b):
-        self.node = weakref.ref(node)   
-        self.a = a                      
-        self.b = b                      
+        self.node = weakref.ref(node)
+        self.a = a
+        self.b = b
 
     def __call__(self):
         node = self.node()
         if node is None:
             return
 
+        grad_out = node.grad
+
         if self.a.requires_grad:
-            a_grad = adjust_shape(node.grad, self.a.shape)
-            self.a.node.grad = self.a.node.grad + a_grad
+            a_grad = align_or_reduce_grad(grad_out, self.a)
+            self.a.node.grad = (
+                self.a.node.grad + a_grad
+                if self.a.node.grad is not None
+                else a_grad
+            )
 
         if self.b.requires_grad:
-            b_grad = adjust_shape(node.grad, self.b.shape)
-            self.b.node.grad = self.b.node.grad + b_grad
-
+            b_grad = align_or_reduce_grad(grad_out, self.b)
+            self.b.node.grad = (
+                self.b.node.grad + b_grad
+                if self.b.node.grad is not None
+                else b_grad
+            )
 
 class SubBackward:
     def __init__(self, node, a, b):
@@ -246,31 +273,41 @@ class SubBackward:
         if node is None:
             return
 
+        grad_out = node.grad
+
         if self.a.requires_grad:
-            a_grad = adjust_shape(node.grad, self.a.shape)
-            self.a.node.grad = self.a.node.grad + a_grad
+            a_grad = align_or_reduce_grad(grad_out, self.a)
+            self.a.node.grad = (
+                self.a.node.grad + a_grad
+                if self.a.node.grad is not None
+                else a_grad
+            )
 
         if self.b.requires_grad:
-            b_grad = adjust_shape(node.grad, self.b.shape)
-            self.b.node.grad = self.b.node.grad - b_grad
+            b_grad = align_or_reduce_grad(grad_out, self.b)
+            self.b.node.grad = (
+                self.b.node.grad - b_grad
+                if self.b.node.grad is not None
+                else -b_grad
+            )
+
 
 class PowBackward:
     def __init__(self, node, a, factor):
         self.node = weakref.ref(node)
-        self.a = a              
+        self.a = a
         self.factor = factor
 
     def __call__(self):
         node = self.node()
-        if node is None:
+        if node is None or not self.a.requires_grad:
             return
 
-        if self.a.requires_grad:
-            a_grad = adjust_shape(node.grad, self.a.shape)
-            self.a.node.grad = self.a.node.grad + (
-                self.factor * jnp.power(self.a.tensor, self.factor - 1) * a_grad
-            )
+        grad = node.grad
+        base = self.a.tensor
 
+        grad_a = self.factor * jnp.power(base, self.factor - 1) * grad
+        self.a.node.grad = self.a.node.grad + align_or_reduce_grad(grad_a, self.a)
 class MulBackward:
     def __init__(self, node, a, b):
         self.node = weakref.ref(node)
@@ -282,13 +319,15 @@ class MulBackward:
         if node is None:
             return
 
+        grad = node.grad
+
         if self.a.requires_grad:
-            a_grad = adjust_shape(node.grad, self.a.shape)
-            self.a.node.grad = self.a.node.grad + (self.b.tensor * a_grad)
+            grad_a = grad * self.b.tensor
+            self.a.node.grad = self.a.node.grad + align_or_reduce_grad(grad_a, self.a)
 
         if self.b.requires_grad:
-            b_grad = adjust_shape(node.grad, self.b.shape)
-            self.b.node.grad = self.b.node.grad + (self.a.tensor * b_grad)
+            grad_b = grad * self.a.tensor
+            self.b.node.grad = self.b.node.grad + align_or_reduce_grad(grad_b, self.b)
 
 
 class DivBackward:
@@ -412,6 +451,7 @@ class MatMulBackward:
 
         if a.requires_grad:
             gA = jnp.matmul(grad, jnp.swapaxes(B, -2, -1))
+            gA = align_or_reduce_grad(gA,tensor=a)
             if self.transpose_a:
                 a.node.grad = a.node.grad + gA.swapaxes(-2, -1)
             else:
@@ -419,6 +459,7 @@ class MatMulBackward:
 
         if b.requires_grad:
             gB = jnp.matmul(jnp.swapaxes(A, -2, -1), grad)
+            gB = align_or_reduce_grad(gB,tensor=b)
             if self.transpose_b:
                 b.node.grad = b.node.grad + gB.swapaxes(-2, -1)
             else:
@@ -1051,13 +1092,19 @@ class SqrtBackward:
     def __call__(self):
         node = self.node()
         a = self.a
-        if node is None or a is None:
+        if node is None or a is None or not a.requires_grad:
             return
-        if a.requires_grad:
-            a_grad = node.grad
-            a.node.grad = a.node.grad + (
-                0.5 / jnp.sqrt(a.tensor) * a_grad
-            )
+
+        grad_out = node.grad
+        grad_out = align_or_reduce_grad(grad_out, a)
+
+        grad = 0.5 / jnp.sqrt(a.tensor) * grad_out
+
+        a.node.grad = (
+            a.node.grad + grad
+            if a.node.grad is not None
+            else grad
+        )
 
 
 class Log2Backward:
@@ -1478,16 +1525,14 @@ class MeanBackward:
 
     def __init__(self, node, x, axis, keepdims):
         self.node = weakref.ref(node)
-        self.x =x
+        self.x = x
         self.axis = axis
         self.keepdims = keepdims
 
     def __call__(self):
         node = self.node()
         x = self.x
-        if node is None or x is None:
-            return
-        if not x.requires_grad:
+        if node is None or x is None or not x.requires_grad:
             return
 
         grad_out = node.grad
@@ -1507,6 +1552,9 @@ class MeanBackward:
                 grad_out = jnp.expand_dims(grad_out, axis=self.axis)
 
         grad_input = jnp.broadcast_to(grad_out, x.tensor.shape) / N
+
+   
+        grad_input = align_or_reduce_grad(grad_input, x)
 
         x.node.grad = (
             x.node.grad + grad_input
@@ -1528,17 +1576,25 @@ class VarBackward:
     def __call__(self):
         node = self.node()
         x = self.x
-        if node is None or x is None:
+        if node is None or x is None or not x.requires_grad:
             return
 
         if self.axis is None:
             N = x.tensor.size
+            mean = self.mean
         else:
             N = x.tensor.shape[self.axis]
+            mean = jnp.expand_dims(self.mean, axis=self.axis)
 
-        grad = (2 / N) * (x.tensor - self.mean)
-        x_grad = adjust_shape(node.grad, x.shape)
-        x.node.grad = x.node.grad + grad * x_grad
+        grad_out = node.grad
+        grad_out = align_or_reduce_grad(grad_out, x)
+
+        grad = (2.0 / N) * (x.tensor - mean)
+        x.node.grad = (
+            x.node.grad + grad * grad_out
+            if x.node.grad is not None
+            else grad * grad_out
+        )
 
 
 class StdBackward:
@@ -1555,21 +1611,27 @@ class StdBackward:
     def __call__(self):
         node = self.node()
         x = self.x
-        if node is None or x is None:
+        if node is None or x is None or not x.requires_grad:
             return
 
         if self.axis is None:
-            N = jnp.prod(x.shape)
-            broadcast_mean = self.mean
-            broadcast_std = self.std
+            N = jnp.prod(jnp.array(x.shape))
+            mean = self.mean
+            std = self.std
         else:
             N = x.shape[self.axis]
-            broadcast_mean = jnp.expand_dims(self.mean, axis=self.axis)
-            broadcast_std = jnp.expand_dims(self.std, axis=self.axis)
+            mean = jnp.expand_dims(self.mean, axis=self.axis)
+            std = jnp.expand_dims(self.std, axis=self.axis)
 
-        x_grad = adjust_shape(node.grad, x.shape)
-        grad = (x.tensor - broadcast_mean) / (N * broadcast_std)
-        x.node.grad = x.node.grad + (grad * x_grad)
+        grad_out = align_or_reduce_grad(node.grad, x)
+        grad = (x.tensor - mean) / (N * std)
+
+        x.node.grad = (
+            x.node.grad + grad * grad_out
+            if x.node.grad is not None
+            else grad * grad_out
+        )
+
 
 
 

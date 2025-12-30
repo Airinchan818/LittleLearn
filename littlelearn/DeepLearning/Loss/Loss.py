@@ -232,7 +232,7 @@ class HuberLoss :
 
         return ll.GradientReflector.huber_loss(y_true,y_pred,delta=self.delta)
     
-class SparseCategoricalCrossentropy :
+class SparseCrossentropy :
     """
     SparseCategoricalCrossentropy
     -----------------------------

@@ -1,6 +1,6 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.0.6) date : (29-December-2025): 
+update Version (1.0.8) date : (31-December-2025): 
     
     - change numeric backend be jax.numpy() 
     - fix memories leak problem 
