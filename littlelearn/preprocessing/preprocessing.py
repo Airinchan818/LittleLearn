@@ -3,7 +3,10 @@ import traceback
 import pandas as pd 
 from typing import Literal 
 import copy
-import re  
+import re 
+from PIL import Image
+import os
+
 def PositionalEncodingSinusoidal (maxpos,d_model) :
 
     """
@@ -296,19 +299,21 @@ class Tokenizer:
         if padding_len is None :
             return sequences
         else :
-            return np.array(sequences)
+            return np.array(sequences,dtype=np.int32)
 
 
 def pad_sequence(sequence : list[list], max_len : int = None) :
+    out = list()
     if max_len is None :
         max_len = max(len(seq) for seq in sequence)
+
     for seq in sequence :
         start_seq = len(seq)
         for _ in range(start_seq,max_len) :
             seq.append(0)
-        
+        out.append(seq)
     
-    return np.array(sequence,dtype=np.int16)
+    return np.array(out,dtype=np.int32)
 
 
 class LabelEncoder :
@@ -635,18 +640,15 @@ class Dataset :
         raise NotImplementedError
 
 class DataLoader:
-    def __init__(self, dataset, batch_size=32, shuffle=True):
+    def __init__(self, dataset, batch_size=32):
         self.dataset = dataset
         self.batch_size = batch_size
-        self.shuffle = shuffle
 
     def __len__(self) :
         return (len(self.dataset) + self.batch_size -1 ) // self.batch_size
 
     def __iter__(self):
         self.indices = np.arange(len(self.dataset))
-        if self.shuffle:
-            np.random.shuffle(self.indices)
 
         for start in range(0, len(self.indices), self.batch_size):
             batch_idx = self.indices[start:start+self.batch_size]
@@ -657,3 +659,83 @@ class DataLoader:
         x = np.array([b[0] for b in batch])
         y = np.array([b[1] for b in batch])
         return x, y
+
+def image_to_array (path,resize :int = None ,grayscale=False) :
+    image =Image.open(path)
+    if grayscale :
+        image = image.convert("L")
+    else :
+        image = image.convert("RGB")
+    
+    if resize is not None :
+        image = image.resize(resize)
+
+    arr = np.array(image,dtype=np.float32) / 255.0
+    if not grayscale:
+        arr = np.transpose(arr,(2,0,1))
+    return np.array(arr)
+
+
+def images_from_folder(folder, resize=None):
+    images = []
+
+    for fname in sorted(os.listdir(folder)):
+        if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
+            continue
+
+        path = os.path.join(folder, fname)
+        img = Image.open(path).convert("RGB")
+
+        if resize is not None:
+            if isinstance(resize, int):
+                img = img.resize((resize, resize))
+            else:
+                img = img.resize(resize)
+
+        arr = np.array(img, dtype=np.float32) / 255.0
+        arr = np.transpose(arr, (2, 0, 1))
+        images.append(arr)
+
+    return np.stack(images)
+
+def images_from_folders(root_dir, label_map, resize=None):
+    images = []
+    labels = []
+
+    for folder_name in sorted(os.listdir(root_dir)):
+        folder_path = os.path.join(root_dir, folder_name)
+
+        if not os.path.isdir(folder_path):
+            continue
+
+        if folder_name not in label_map:
+            continue  
+
+        label = label_map[folder_name]
+
+        for fname in sorted(os.listdir(folder_path)):
+            if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                continue
+
+            path = os.path.join(folder_path, fname)
+            img = Image.open(path).convert("RGB")
+
+            if resize is not None:
+                if isinstance(resize, int):
+                    img = img.resize((resize, resize))
+                else:
+                    img = img.resize(resize)
+
+            arr = np.array(img, dtype=np.float32) / 255.0
+            arr = np.transpose(arr, (2, 0, 1))  # C,H,W
+
+            images.append(arr)
+            labels.append(label)
+
+    X = np.stack(images)
+    y = np.array(labels, dtype=np.int32)
+
+    return {
+        "image" : X,
+        "label" : y
+    }

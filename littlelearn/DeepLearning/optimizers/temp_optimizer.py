@@ -42,7 +42,7 @@ class Adam(Optimizer):
                 new_m.append(self.m[i])
                 new_v.append(self.v[i])
                 continue
-            if self.clip_norm > 0.0:
+            if self.clipnorm > 0.0:
                 norm = jnp.linalg.norm(g)
                 if norm > self.clipnorm :
                     scale = self.clipnorm / norm

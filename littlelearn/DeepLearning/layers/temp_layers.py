@@ -693,3 +693,56 @@ class DiagonalSSM(Component):
             output.append(y.reshape((B, 1, D)))
 
         return ll.concat(output, axis=1)
+
+class Conv2d (Component) :
+    def __init__(self,input_chanel : int , output_chanel : int,kernel_2n : int =2 ,
+                 stride : int = 1 ,padding=0,add_bias = False):
+        super().__init__()
+        std = math.sqrt(6/(input_chanel + output_chanel))
+        self.weight = Parameter(
+            tensor= uniform(
+            low = -std,high=std,shape=(output_chanel,input_chanel,kernel_2n,kernel_2n),
+            max_random_seed=100
+            ) 
+        ) 
+        
+        if add_bias :
+            self.bias = Parameter(
+                tensor=zeros(
+                    shape=(1,output_chanel)
+                )
+            )
+        else :
+            self.bias = None 
+        
+        self.stride = stride
+        self.padding = padding
+    
+    def forwardpass(self,x) :
+        return ll.GradientReflector.conv2d(
+            x = x,w=self.weight,b=self.bias,stride=self.stride,pad=self.padding
+        )
+
+class GlobalAveragePooling2d (Component) :
+    def __init__ (self,axis=(-1,-2),keepdims=False) :
+        super().__init__()
+        if len(axis) != 2 :
+            raise ValueError(f"{axis} error this layers just support 2d axis = (axis1,axis2)")
+        self.axis = axis 
+        self.keepdims = keepdims
+    
+    def forwardpass(self,x) :
+        return ll.mean(x,axis=self.axis,keepdims=self.keepdims) 
+
+class Maxpool2d (Component) :
+    def __init__(self,kernel_2t=2,stride_t=2,padding=0) :
+        super().__init__()
+        self.kernel = (kernel_2t,kernel_2t)
+        self.stride = (stride_t,stride_t)
+        self.padding = padding
+    
+    def forwardpass(self,x) :
+        return ll.GradientReflector.maxpool2d(
+            x=x,kernel=self.kernel,stride=self.stride,
+            padding=self.padding
+        )

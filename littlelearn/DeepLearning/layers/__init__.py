@@ -17,3 +17,6 @@ from .temp_layers import LCTBlock
 from .temp_layers import FeedForwardNetwork
 from .temp_layers import TransformersBlock
 from .temp_layers import DiagonalSSM
+from .temp_layers import Conv2d
+from .temp_layers import Maxpool2d
+from .temp_layers import GlobalAveragePooling2d

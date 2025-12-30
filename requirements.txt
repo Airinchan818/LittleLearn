@@ -1,5 +1,6 @@
 numpy >=2.4.0
 pandas >= 2.2.2
 tqdm >= 4.66.4
-jax >= 0.4.26
-jaxlib >= 0.4.26
+jax >= 0.7.2
+jaxlib >= 0.7.2
+pillow >= 10.2.0

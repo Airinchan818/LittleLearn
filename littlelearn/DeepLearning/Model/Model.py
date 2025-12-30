@@ -3,7 +3,6 @@ from littlelearn.DeepLearning import layers as la
 from littlelearn.DeepLearning import activations as activ
 from littlelearn.DeepLearning import optimizers
 import littlelearn as ll
-import matplotlib.pyplot as plt 
 import math 
 
 class Trainer :
@@ -45,7 +44,6 @@ class Trainer :
         
         self.__loader = DataLoader(datasets)
         self.model = Model 
-        self.loss_hist = []
         self.optimizer = None 
         self.loss_fn = None 
         self.clipper = None 
@@ -63,7 +61,7 @@ class Trainer :
 
     
     def run (self,batch_size = 32,epochs = 1, verbose : Literal[0,1] = 0,shuffle : bool = False,
-            device = "cpu") :
+            device = "cpu",dtype=(ll.float32,ll.float32)) :
         """
             run Trainer for training model, use this function for training model with 
             Trainer
@@ -101,13 +99,12 @@ class Trainer :
         from tqdm import tqdm 
         self.__loader.batch_size = batch_size
         self.__loader.shuffle = shuffle
-        lost_hist = []
         for epoch in range(epochs) :
             total_loss = 0 
             iterator = tqdm(self.__loader)
             for x_train,y_train in iterator :
-                x_train = x_train.to(device)
-                y_train = y_train.to(device)
+                x_train = ll.to_tensor(x_train,dtype=dtype[0],device=device,requires_grad=False)
+                y_train = ll.to_tensor(y_train,dtype=dtype[1],device=device,requires_grad=False)
                 y_pred = self.model(x_train)
                 loss = self.loss_fn(y_train,y_pred)
                 loss.backwardpass()
@@ -120,22 +117,12 @@ class Trainer :
                 iterator.set_postfix(loss = loss.tensor)
             
             total_loss = total_loss / len(self.__loader)
-            self.loss_hist.append(total_loss)
             if verbose == 1 :
                 print(f"epoch : {epoch + 1} / {epochs} || global loss : {total_loss}")
     
     def return_model (self) :
         return self.model
-
                 
-    def plot_loss (self) :
-        plt.title(f"{self.model.__class__.__name__} loss")
-        plt.xlabel("epoch")
-        plt.ylabel("values")
-        plt.plot(self.loss_hist,color='red',label='loss')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
 
 class MLPBlock(la.Component) :
     def __init__(self,dim : int) :

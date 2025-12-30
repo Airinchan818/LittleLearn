@@ -17,3 +17,6 @@ from .preprocessing import AutoPreprocessing
 from .preprocessing import Dataset
 from .preprocessing import DataLoader
 from .preprocessing import pad_sequence
+from .preprocessing import image_to_array
+from .preprocessing import images_from_folder
+from .preprocessing import images_from_folders

@@ -93,66 +93,67 @@ def im2col(x, KH, KW, stride, pad):
     N, C, H, W = x.shape
     H_out = (H + 2 * pad - KH) // stride + 1
     W_out = (W + 2 * pad - KW) // stride + 1
-    
+
     x_padded = jnp.pad(
         x,
-        ((0,0), (0,0), (pad, pad), (pad, pad)),
-        mode='constant'
+        ((0,0), (0,0), (pad,pad), (pad,pad))
     )
- 
+
     i0 = jnp.repeat(jnp.arange(KH), KW)
     i0 = jnp.tile(i0, C)
-    
-    i1 = stride * jnp.repeat(jnp.arange(H_out), W_out)
-    
+
     j0 = jnp.tile(jnp.arange(KW), KH)
     j0 = jnp.tile(j0, C)
-    
-    j1 = stride * jnp.tile(jnp.arange(W_out), H_out)
-    
+
     d = jnp.repeat(jnp.arange(C), KH * KW)
-    
-    cols = x_padded[:, d, i0[:, None] + i1, j0[:, None] + j1]
+
+    i1 = stride * jnp.repeat(jnp.arange(H_out), W_out)
+    j1 = stride * jnp.tile(jnp.arange(W_out), H_out)
+
+    i = i0[:, None] + i1[None, :]
+    j = j0[:, None] + j1[None, :]
+
+    cols = x_padded[:, d[:, None], i[None, :, :], j[None, :, :]]
     cols = cols.reshape(N, C * KH * KW, H_out * W_out)
-    
-    return cols, x_padded
 
-def col2im(cols, x_padded_shape, KH, KW, stride, pad):
-    N, C, H_p, W_p = x_padded_shape
-    _, _, L = cols.shape 
-    
-    H_out = (H_p - KH) // stride + 1
-    W_out = (W_p - KW) // stride + 1
-    
-    x_padded = jnp.zeros(x_padded_shape)
-    
+    return cols,x_padded
+
+
+def col2im(cols, x_shape, KH, KW, stride, pad):
+    N, C, H, W = x_shape
+    H_out = (H + 2*pad - KH) // stride + 1
+    W_out = (W + 2*pad - KW) // stride + 1
+
+    dx_padded = jnp.zeros((N, C, H + 2*pad, W + 2*pad))
+
     i0 = jnp.repeat(jnp.arange(KH), KW)
     i0 = jnp.tile(i0, C)
-    
-    i1 = stride * jnp.repeat(jnp.arange(H_out), W_out)
-    
+
     j0 = jnp.tile(jnp.arange(KW), KH)
     j0 = jnp.tile(j0, C)
-    
-    j1 = stride * jnp.tile(jnp.arange(W_out), H_out)
-    
-    d = jnp.repeat(jnp.arange(C), KH * KW)
-    
-    cols_reshaped = cols.reshape(N, C * KH * KW, L)
-    
-    for n in range(N):
-        x_padded = x_padded.at[
-            n,
-            d,
-            i0[:, None] + i1,
-            j0[:, None] + j1
-        ].add(cols_reshaped[n])
-    
-    if pad > 0:
-        return x_padded[:, :, pad:-pad, pad:-pad]
-    else:
-        return x_padded
 
+    d  = jnp.repeat(jnp.arange(C), KH * KW)
+
+    i1 = stride * jnp.repeat(jnp.arange(H_out), W_out)
+    j1 = stride * jnp.tile(jnp.arange(W_out), H_out)
+
+    i = i0[:, None] + i1[None, :]
+    j = j0[:, None] + j1[None, :]
+
+    # reshape agar match scatter
+    cols_reshaped = cols.reshape(N, C*KH*KW, H_out*W_out)
+
+    dx_padded = dx_padded.at[
+        :, 
+        d[:, None],
+        i[None, :, :],
+        j[None, :, :]
+    ].add(cols_reshaped)
+
+    if pad > 0:
+        return dx_padded[:, :, pad:-pad, pad:-pad]
+
+    return dx_padded
 
 class Conv2DBackward:
     def __init__(self, x, w, b, stride, pad, cols, x_padded, out_shape, node):
@@ -181,7 +182,7 @@ class Conv2DBackward:
         N, Cout, Hout, Wout = dOut.shape
         KH, KW = w.shape[2], w.shape[3]
 
-        # --- bias grad ---
+
         if b is not None and b.requires_grad:
             db = jnp.sum(dOut, axis=(0, 2, 3))
             b.node.grad = b.node.grad + db
@@ -318,16 +319,13 @@ def conv2d_forward(x, w, b, stride, pad):
     
 
     w_col = w.reshape(Cout, Cin * KH * KW)
-    
 
     out = jnp.matmul(w_col[None], cols)  
     out = out.reshape(N, Cout, -1)      
     
-    
     H_out = (H + 2*pad - KH) // stride + 1
     W_out = (W + 2*pad - KW) // stride + 1
     out = out.reshape(N, Cout, H_out, W_out)
-    
     if b is not None:
         out = out + b.reshape(1, Cout, 1, 1)
     
