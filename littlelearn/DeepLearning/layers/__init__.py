@@ -20,3 +20,16 @@ from .temp_layers import DiagonalSSM
 from .temp_layers import Conv2d
 from .temp_layers import Maxpool2d
 from .temp_layers import GlobalAveragePooling2d
+from .temp_layers import GAU
+from .temp_layers import GLU
+from .temp_layers import GeGLU
+from .temp_layers import ScaleNorm
+from .temp_layers import SwiGLU
+from .temp_layers import LayerScale
+from .temp_layers import LinearAttention
+from .temp_layers import ReGLU
+from .temp_layers import ReLUSquaredGLU
+from .temp_layers import ResiduralGating
+from .temp_layers import ReZero 
+from .temp_layers import MultiQueryAttention
+from .temp_layers import TalkingHeadAttention

@@ -16,7 +16,7 @@ Candra Alpin Gunawan
 """
 __name__ = "littlelearn"
 __author__ = "Candra Alpin Gunawan"
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 __license__ = "Apache 2.0"
 __realese__ = "31-December-2025"
 __email__ = "hinamatsuriairin@gmail.com"
@@ -139,7 +139,7 @@ def transpose(a,new_shape:tuple) :
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
-    return a.reshape(newshape=new_shape)
+    return a.transpose(shape=new_shape)
 
 def sqrt (a) :
     if not isinstance(a,Tensor) :

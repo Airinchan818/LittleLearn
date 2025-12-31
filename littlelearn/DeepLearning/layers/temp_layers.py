@@ -388,7 +388,7 @@ class MultiHeadAttention (Component) :
     def __split_head(self,X) :
         B,S,_  = X.shape
         X = ll.reshape(X,(B,S,self.num_head,self.dim_k))
-        X = ll.transpose(X,(B,self.num_head,S,self.dim_k))
+        X = ll.transpose(X,(0,2,1,3))
         return X
     
     def __scaled_dot_product (self,Q,K,V,causal_mask=None):
@@ -426,7 +426,7 @@ class MultiHeadAttention (Component) :
                 Q=q,K=k,V=v,causal_mask=None
             )
 
-        output = ll.transpose(output,new_shape=(B,S,self.num_head,self.dim_k))
+        output = ll.transpose(output,new_shape=(0,2,1,3))
         output = ll.reshape(output,new_shape=(B,S,D))
 
         if self.add_bias :
@@ -748,3 +748,421 @@ class Maxpool2d (Component) :
             x=x,kernel=self.kernel,stride=self.stride,
             padding=self.padding
         )
+
+class SwiGLU (Component) :
+    def __init__ (self,embed_dim : int , hidden_dim : int) :
+        super().__init__()
+        std = math.sqrt(float(6/(embed_dim + hidden_dim))) 
+        self.w1 = Parameter(
+            tensor=uniform(
+                low=-std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.w2 = Parameter(
+            tensor=uniform(
+                low=-std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.swish = ac.Swish()
+    
+    def forwardpass(self,x) :
+        shifted1 = ll.matmul(x,self.w1)
+        shifted1 = self.swish(shifted1)
+        shifted2 = ll.matmul(x,self.w2)
+        output = shifted1 * shifted2
+        return output 
+        
+
+class GeGLU (Component) :
+    def __init__ (self,embed_dim,hidden_dim) :
+        super().__init__()
+        std = math.sqrt(float(6/(embed_dim + hidden_dim)))
+        self.w1 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.w2 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.gelu = ac.Gelu()
+    
+    def forwardpass(self,x) :
+        shifted1 = ll.matmul(x,self.w1) 
+        shifted1 = self.gelu(shifted1)
+        shifted2 = ll.matmul(x,self.w2)
+        logits = shifted1 * shifted2
+        return logits 
+
+class ReGLU (Component) :
+    def __init__(self,embed_dim,hidden_dim) :
+        super().__init__()
+        std = math.sqrt(float(6/(embed_dim + hidden_dim)))
+        self.w1 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.w2 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.relu = ac.Relu()
+    
+    def forwardpass(self,x) :
+        shifted1 = ll.matmul(x,self.w1)
+        shifted1 = self.relu(shifted1)
+        shifted2 = ll.matmul(x,self.w2)
+        logits = shifted1 * shifted2
+        return logits
+
+class ReLUSquaredGLU(Component) :
+    def __init__(self,embed_dim,hidden_dim) :
+        super().__init__()
+        std = math.sqrt(float(6/(embed_dim + hidden_dim)))
+        self.w1 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.w2 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.relu = ac.Relu()
+    
+    def forwardpass(self,x) :
+        shifted1 = ll.matmul(x,self.w1)
+        shifted1 = self.relu(shifted1) **2 
+        shifted2 = ll.matmul(x,self.w2)
+        output = shifted1 * shifted2
+        return output
+
+class GLU (Component) :
+    def __init__(self,embed_dim,hidden_dim) :
+        super().__init__()
+        std = math.sqrt(float(6/(embed_dim + hidden_dim)))
+        self.w1 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.w2 = Parameter(
+            tensor=uniform(
+                low = -std,high=std,shape=(embed_dim,hidden_dim),
+                max_random_seed=100
+            )
+        )
+        self.sigmoid = ac.Sigmoid()
+    
+    def forwardpass(self,x) :
+        shifted1 = ll.matmul(x,self.w1) 
+        shifted1 = self.sigmoid(shifted1)
+        shifted2 = ll.matmul(x,self.w2)
+        logits = shifted1 * shifted2
+        return logits 
+
+class GAU (Component) :
+    def __init__ (self,embed_dim,return_attention = False,add_bias = False,
+                  use_causalmask = False) :
+        super().__init__()
+        std = math.sqrt(float(6/(embed_dim * 2)))
+        self.wq = Parameter(
+            tensor=(
+                uniform(low=-std,high=std,shape=(embed_dim,embed_dim),max_random_seed=100)
+            )
+        )
+        self.wk = Parameter(
+            tensor=(
+                uniform(low=-std,high=std,shape=(embed_dim,embed_dim),max_random_seed=100)
+            )
+        )
+        self.wv = Parameter(
+            tensor=(
+                uniform(low=-std,high=std,shape=(embed_dim,embed_dim),max_random_seed=100)
+            )
+        )
+        self.wgate = Parameter(
+            tensor=(
+                uniform(low=-std,high=std,shape=(embed_dim,embed_dim),max_random_seed=100)
+            )
+        )
+        self.wo = Parameter(
+            tensor=(
+                uniform(low=-std,high=std,shape=(embed_dim,embed_dim),max_random_seed=100)
+            )
+        )
+
+        if add_bias :
+            self.bq = Parameter(
+                tensor=uniform(
+                    ones(shape=(1,embed_dim))
+                )
+            )
+            self.bk = Parameter(
+                tensor=uniform(
+                    ones(shape=(1,embed_dim))
+                )
+            )
+            self.bv = Parameter(
+                tensor=uniform(
+                    ones(shape=(1,embed_dim))
+                )
+            )
+            self.bo = Parameter(
+                tensor=uniform(
+                    ones(shape=(1,embed_dim))
+                )
+            )
+        
+        self.add_bias = add_bias
+        self.return_attention = return_attention
+        self.use_causalmask = use_causalmask
+    
+    def __attention_count (self,q,k,v,mask = None) :
+        score = ll.matmul(q,k,transpose_b=True) / (k.shape[-1] ** 0.5)
+        if mask is not None :
+            score = score + mask 
+        attn = ac.softplus(score)
+        
+        out = ll.matmul(attn,v)
+
+        return out,attn 
+    
+    def __create_causalmask (self,size,device) :
+        return 1 - ll.tril(tensor=ll.ones(shape=(size,size)),diagonal=1,device=device) 
+    
+    def forwardpass(self,Q,K,V) :
+        _,S,_ = Q.shape
+
+
+        if self.add_bias :
+            q = ll.matmul(Q,self.wq) + self.bq 
+            k = ll.matmul(K,self.wk) + self.bk
+            V = ll.matmul(V,self.wv) + self.bv 
+        
+        else :
+            q = ll.matmul(Q,self.wq)
+            k = ll.matmul(K,self.wk)
+            v = ll.matmul(V,self.wv)
+        
+        if self.use_causalmask :
+            mask = self.__create_causalmask(S,q.device)
+            mask = mask * -1e9
+        else :
+            mask = None 
+        gate = ll.matmul(Q,self.wgate)
+        gate = ac.sigmoid(gate)
+        output,attn = self.__attention_count(q,k,v,mask=mask)
+        output = output * gate 
+
+        if self.return_attention :
+            return output,attn
+        else :
+            return output
+
+class LayerScale (Component) :
+    def __init__(self,input_dim,init_value=1e-5) :
+        super().__init__()
+        self.w = Parameter(
+            tensor=ones(shape=(input_dim,)) * init_value
+        )
+    
+    def forwardpass(self,x,factor) :
+        return x + self.w * factor
+    
+
+class ScaleNorm (Component) :
+    def __init__ (self,embed_dim : int,epsilon=1e-5) :
+        super().__init__()
+        self.factor = Parameter(
+            tensor=ones(shape=(embed_dim,))
+        )
+        self.eps = epsilon
+    
+    def forwardpass (self,x) :
+        sumval = ll.sum(a=(x*x),axis=-1,keepdims=True)
+        norm  = ll.sqrt(sumval) + self.eps
+        return x * (self.factor / norm) 
+    
+class ReZero (Component) :
+    def __init__(self) :
+        super().__init__()
+        self.alpha = Parameter(tensor=ones((1,)))
+    
+    def forwardpass(self,x,factor) :
+        return x + self.alpha * factor
+    
+class ResiduralGating (Component) :
+    def __init__ (self,embed_dim : int) :
+        super().__init__()
+        self.w = Parameter(
+            tensor=zeros(shape=(embed_dim,embed_dim))
+        )
+        self.sigmoid = ac.Sigmoid()
+    
+    def forwardpass (self,x) :
+        gate = ll.matmul(x,self.w) 
+        gate = self.sigmoid(gate)
+        return x * gate 
+
+class LinearAttention (Component) :
+    def __init__ (self,epsilon=1e-6) :
+        super().__init__()
+        self.eps = epsilon
+    
+    def __Phi(self,x) :
+        return ac.elu(x) + 1.0 
+    
+    def forwardpass(self,Q,K,V) :
+        q = self.__Phi(Q)
+        k = self.__Phi(K)
+
+        k_sum = ll.sum(k,axis=-1)
+        kv = ll.matmul(k,V,transpose_a=True)
+        numer = ll.matmul(kv,q)
+        denorm = ll.matmul(q,k_sum.unsquezze(-1)).squezze(-1) + self.eps
+        denorm = denorm.unsquezze(-1)
+        
+        out = numer / denorm 
+        return out 
+    
+    
+class MultiQueryAttention(Component):
+    def __init__(self, embed_dim, num_head,
+                 return_attention=False, use_causalmask=False):
+        super().__init__()
+        self.use_causalmask = use_causalmask
+        self.num_head = num_head
+        self.head_dim = embed_dim // num_head
+        self.return_attention = return_attention
+
+        std = math.sqrt(6/(2*embed_dim))
+
+
+        self.wq = Parameter(uniform(-std, std, (embed_dim, embed_dim)))
+
+
+        self.wk = Parameter(uniform(-std, std, (embed_dim, self.head_dim)))
+        self.wv = Parameter(uniform(-std, std, (embed_dim, self.head_dim)))
+
+        self.wo = Parameter(uniform(-std, std, (embed_dim, embed_dim)))
+
+
+    def __create_causalmask(self, size, device):
+        return 1 - ll.tril(ones((size, size)))
+
+    def forwardpass(self, Q, K, V):
+        B, S, D = Q.shape
+
+
+        if self.use_causalmask:
+            mask = self.__create_causalmask(S, device=Q.device) * -1e9
+        else:
+            mask = None
+
+
+        q = ll.matmul(Q, self.wq)
+        q = ll.reshape(q, (B, S, self.num_head, self.head_dim))
+        q = ll.transpose(q, (0, 2, 1, 3))     
+
+
+        k = ll.matmul(K, self.wk)              
+        v = ll.matmul(V, self.wv)              
+        k = ll.expand_dims(k, axis=1)           
+        v = ll.expand_dims(v, axis=1)           
+
+
+        score = ll.matmul(q, k, transpose_b=True) / ll.sqrt(self.head_dim)
+
+
+        if mask is not None:
+            score = score + mask
+
+        attn = ac.softmax(score, axis=-1, keepdims=False,use_crossentropy=False)
+        out = ll.matmul(attn, v)                
+
+
+        out = ll.transpose(out, (0, 2, 1, 3))   
+        out = ll.reshape(out, (B, S, D))        
+
+        out = ll.matmul(out, self.wo)
+
+        if self.return_attention:
+            return out, attn
+        return out
+
+class TalkingHeadAttention(Component):
+    def __init__(self, embed_dim, num_heads, return_attention=False, use_causalmask=False):
+        super().__init__()
+        std = math.sqrt(6/(embed_dim * 2))
+        self.num_head = num_heads
+        self.head_dim = embed_dim // num_heads
+        self.return_attention = return_attention
+        self.use_causalmask = use_causalmask
+
+        self.Wq = Parameter(uniform(-std, std, (embed_dim, embed_dim)))
+        self.Wk = Parameter(uniform(-std, std, (embed_dim, embed_dim)))
+        self.Wv = Parameter(uniform(-std, std, (embed_dim, embed_dim)))
+        self.Wo = Parameter(uniform(-std, std, (embed_dim, embed_dim)))
+
+        self.Wleft  = Parameter(uniform(-std, std, (num_heads, num_heads)))
+        self.Wright = Parameter(uniform(-std, std, (num_heads, num_heads)))
+
+    def __create_causalmask(self, size, device):
+        return 1 - ll.tril(ones(size, size),device=device)
+
+    def __splitheads(self, x):
+        b, s, d = x.shape
+        x = ll.reshape(x, (b, s, self.num_head, self.head_dim))
+        return ll.transpose(x, (0, 2, 1, 3))   
+
+    def forwardpass(self, Q, K, V):
+        b, s, d = Q.shape
+
+        q = self.__splitheads(ll.matmul(Q, self.Wq))
+        k = self.__splitheads(ll.matmul(K, self.Wk))
+        v = self.__splitheads(ll.matmul(V, self.Wv))
+
+
+        attn = ll.matmul(q, k, transpose_b=True) / ll.sqrt(self.head_dim)
+
+        if self.use_causalmask:
+            mask = self.__create_causalmask(s, device=q.device) * -1e9
+            attn = attn + mask
+
+
+        attn = ll.transpose(attn, (0, 2, 3, 1))
+        attn = ll.matmul(attn, self.Wleft)  
+        attn = ll.transpose(attn, (0, 3, 1, 2))
+
+
+        attn = ac.softmax(attn, axis=-1, keepdims=False,use_crossentropy=False)
+
+        attn = ll.transpose(attn, (0, 2, 3, 1))
+        attn = ll.matmul(attn, self.Wright)
+   
+        attn = ll.transpose(attn, (0, 3, 1, 2))
+
+        out = ll.matmul(attn, v) 
+        out = ll.transpose(out, (0, 2, 1, 3))  
+        out = ll.reshape(out, (b, s, d))
+
+        out = ll.matmul(out, self.Wo)
+
+        if self.return_attention:
+            return out, attn
+        return out

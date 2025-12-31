@@ -1,24 +1,21 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.0.8) date : (31-December-2025): 
-    
-    - change numeric backend be jax.numpy() 
-    - fix memories leak problem 
-    - fix LSTM failure training bug
-    - fix Attention failure training bug 
-    - add Tensor class mechanism 
-    - Gradient Reflectot Being autodiff non data can use by general case 
-    - add Node Mechanism
-    - add general Tensor ops
-    - replacing AutoBuildModel and AutoTransformers with instant model in Model
-    - Tokenizer bug fixed 
-    - add DiagonalSSM layers with Gating mechanism
-    - add Conv2d layers 
-    - add Maxpooling22D layers 
-    - add GlobalAverage2D layers 
-    - add image_to_array preprocessing 
-    - add image_from_folder preprocessing
-    - add image_from_folders preprocessing  
+update Version (1.0.9) date : (31-December-2025): 
+
+    - add LayerScale 
+    - add Gating Attention Unit
+    - add Gating Linear Unit 
+    - add ScaleNorm 
+    - add SwiGLU
+    - add LinearAttention
+    - add ReGLU 
+    - add ReLUSquaredGLu 
+    - add ResiduralGating 
+    - add ReZeo 
+    - add MultuQueryAttention 
+    - add TalkingHeadAttention 
+    - add GeGLU 
+
 
 warning : on this update we remove so many feature because paradims changed.      
 

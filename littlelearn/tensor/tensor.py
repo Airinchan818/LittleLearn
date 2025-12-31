@@ -377,8 +377,8 @@ def binomial (n :float , p : float , shape : tuple ,max_random_keys = 10,
     return Tensor(data=data,device=device)
 
 def top_k (logits : Tensor,top_k = 1) :
-    logits = jax.lax.top_k(logits.tensor,top_k)
-    return Tensor(logits)
+    prob,index = jax.lax.top_k(logits.tensor,top_k)
+    return Tensor(prob),Tensor(index,dtype=int32)
 
 
 def categorical (logits : Tensor,max_random_seed = 10,axis=-1) :
@@ -405,3 +405,4 @@ def normal(mean :float = 0.0, std = 1.0,shape : tuple = ()
     data = mean + std * data 
     return Tensor(data=data,dtype=dtype,device=device,
                   requires_grad=requires_grad) 
+
