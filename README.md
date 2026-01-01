@@ -1,6 +1,6 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.0.9) date : (31-December-2025): 
+update Version (1.1.0) date : (1-January-2026): 
 
     - add LayerScale 
     - add Gating Attention Unit

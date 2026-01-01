@@ -1031,11 +1031,11 @@ class LinearAttention (Component) :
         q = self.__Phi(Q)
         k = self.__Phi(K)
 
-        k_sum = ll.sum(k,axis=-1)
+        k_sum = ll.sum(k,axis=1)
         kv = ll.matmul(k,V,transpose_a=True)
-        numer = ll.matmul(kv,q)
-        denorm = ll.matmul(q,k_sum.unsquezze(-1)).squezze(-1) + self.eps
-        denorm = denorm.unsquezze(-1)
+        numer = ll.matmul(q,kv)
+        denorm = ll.matmul(q,k_sum.unsquezze(-1)).squezze(-1)
+        denorm = denorm.unsquezze(-1) + self.eps
         
         out = numer / denorm 
         return out 
