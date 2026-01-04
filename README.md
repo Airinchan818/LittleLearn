@@ -1,20 +1,10 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.1.0) date : (1-January-2026): 
+update Version (1.1.2) date : (4-January-2026): 
 
-    - add LayerScale 
-    - add Gating Attention Unit
-    - add Gating Linear Unit 
-    - add ScaleNorm 
-    - add SwiGLU
-    - add LinearAttention
-    - add ReGLU 
-    - add ReLUSquaredGLu 
-    - add ResiduralGating 
-    - add ReZeo 
-    - add MultuQueryAttention 
-    - add TalkingHeadAttention 
-    - add GeGLU 
+    - add new Model LinearAttentionEncoder
+    - add new Model MultiQueryAttentionTransformers
+    - add new Model TalkingHeadAttentionTransformers
 
 
 warning : on this update we remove so many feature because paradims changed.      

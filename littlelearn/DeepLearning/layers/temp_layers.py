@@ -722,7 +722,7 @@ class Conv2d (Component) :
     
     def forwardpass(self,x) :
         return ll.GradientReflector.conv2d(
-            x = x,w=self.weight,b=self.bias,stride=self.stride,pad=self.padding
+            a = x,w=self.weight,b=self.bias,stride=self.stride,pad=self.padding
         )
 
 class GlobalAveragePooling2d (Component) :
@@ -1063,7 +1063,7 @@ class MultiQueryAttention(Component):
 
 
     def __create_causalmask(self, size, device):
-        return 1 - ll.tril(ones((size, size)))
+        return 1 - ll.tril(ones((size, size)),diagonal=0,device=device)
 
     def forwardpass(self, Q, K, V):
         B, S, D = Q.shape
@@ -1123,7 +1123,7 @@ class TalkingHeadAttention(Component):
         self.Wright = Parameter(uniform(-std, std, (num_heads, num_heads)))
 
     def __create_causalmask(self, size, device):
-        return 1 - ll.tril(ones(size, size),device=device)
+        return 1 - ll.tril(ones(shape=(size,size)),device=device)
 
     def __splitheads(self, x):
         b, s, d = x.shape

@@ -7,3 +7,6 @@ from .Model import RNN_Model
 from .Model import MHATransformers
 from .Model import LatentConnectedModel
 from .Model import LatentConnectedTransformers
+from .Model import LinearAttentionEncoder
+from .Model import MultiQueryAttentionTransformers
+from .Model import TalkingHeadAttentionTransformers

@@ -231,7 +231,7 @@ class MHATransformers (la.Component) :
     def __init__(
             self,vocab_size :int,embed_dim : int,
             ffn_dim : int,drop_rate : float,max_pos : int,num_depth : int = 3
-            ,mode : Literal['Encoder','Decoder'] = 'Encoder',
+            ,mode : Literal['Encoder','Decoder'] = 'Encoder'
 
     ) :
         super().__init__()
@@ -265,7 +265,7 @@ class Transformers (la.Component) :
     def __init__(
             self,vocab_size :int,embed_dim : int,
             ffn_dim : int,drop_rate : int,max_pos : int,num_depth : int = 3
-            ,mode : Literal['Encoder','Decoder'] = 'Encoder',
+            ,mode : Literal['Encoder','Decoder'] = 'Encoder'
 
     ) :
         super().__init__()
@@ -323,7 +323,7 @@ class LatentConnectedTransformers (la.Component) :
     def __init__(
             self,vocab_size :int,embed_dim : int,
             num_head : int,drop_rate : int,max_pos : int,num_depth : int = 3
-            ,mode : Literal['Encoder','Decoder'] = 'Encoder',
+            ,mode : Literal['Encoder','Decoder'] = 'Encoder'
 
     ) :
         super().__init__()
@@ -333,14 +333,14 @@ class LatentConnectedTransformers (la.Component) :
         if mode == 'Encoder' :
             self.block = la.Sequential([
                 la.LCTBlock(
-                    embed_dim=embed_dim,num_head=num_depth,
+                    embed_dim=embed_dim,num_head=num_head,
                     drop_rate=drop_rate,use_causal_mask=False
                 ) for _ in range(num_depth)
             ])
         else :
             self.block = la.Sequential([
                 la.LCTBlock(
-                    embed_dim=embed_dim,num_head=num_depth,
+                    embed_dim=embed_dim,num_head=num_head,
                     drop_rate=drop_rate,use_causal_mask=True
                 ) for _ in range(num_depth)
                 ])
@@ -359,3 +359,178 @@ class LatentConnectedTransformers (la.Component) :
         x = x + pos 
         x = self.block(x)
         return x 
+    
+class BlockLinearAttn (la.Component) :
+    def __init__(self,embed_dim,drop_rate,epsilon):
+        super().__init__()
+        self.attntion = la.LinearAttention(epsilon=epsilon)
+        self.dropout1 = la.Dropout(drop_rate)
+        self.dropout2 = la.Dropout(drop_rate)
+        self.norm1 = la.RMSNorm(embed_dim,epsilon)
+        self.norm2 = la.RMSNorm(embed_dim,epsilon)
+        self.ffn = la.FeedForwardNetwork(embed_dim,embed_dim*4)
+        
+    def forwardpass(self,x) :
+        norm = self.norm1(x)
+        attn = self.attntion(norm,norm,norm)
+        attn = self.dropout1(attn)
+        x = x + attn 
+
+        norm = self.norm2(x)
+        ffn = self.ffn(norm)
+        ffn = self.dropout2(ffn)
+        x = x + ffn 
+        
+        return x 
+    
+
+class LinearAttentionEncoder (la.Componen):
+    def __init__ (self,vocab_size : int ,embed_dim : int ,drop_rate : float,num_depth:int,
+                  maxpos : int,epsilon : float) :
+        super().__init__()
+        self.embedding = la.Embedding(vocab_size=vocab_size,
+                                      embedding_dim=embed_dim)
+        self.pos_learn = la.Embedding(maxpos,embed_dim)
+        self.scale = vocab_size ** 0.5 
+        self.block = la.Sequential(
+            [
+                BlockLinearAttn(embed_dim=embed_dim,drop_rate=drop_rate,epsilon=epsilon) for _ in range(num_depth)
+            ]
+        )
+    
+    def forwardpass(self,x) :
+        _,S = x.shape 
+        x = self.embedding(x)
+        x = x * self.scale
+        pos = ll.arange(0,S,device=x.device)
+        pos = self.pos_learn(pos)
+        pos = ll.unsquezze(pos,axis=0)
+        x = x + pos 
+        x = self.block(x)
+        return x
+
+class MultiQATTNBlock (la.Component) :
+    def __init__ (self,embed_dim,drop_rate,use_causalmask) :
+        super().__init__()
+        num_head = embed_dim // 64 
+        if embed_dim < 64 :
+            num_head = 2 
+            
+        self.attention = la.MultiQueryAttention(
+            embed_dim=embed_dim,num_head=num_head,use_causalmask=use_causalmask
+        )
+        self.dropout1 = la.Dropout(drop_rate)
+        self.norm = la.RMSNorm(embed_dim=embed_dim)
+        self.norm2 = la.RMSNorm(embed_dim=embed_dim)
+        self.dropout2 = la.Dropout(drop_rate)
+        self.ffn = la.FeedForwardNetwork(embed_dim=embed_dim,ffn_dim=embed_dim*4)
+    
+    def forwardpass (self,x) :
+        norm = self.norm(x)
+        attn = self.attention(norm,norm,norm)
+        attn = self.dropout1(attn)
+        x = x + attn 
+
+        norm = self.norm2(x)
+        ffn = self.ffn(norm)
+        ffn = self.dropout2(ffn)
+        x = x + ffn 
+
+        return x 
+
+
+class MultiQueryAttentionTransformers (la.Component) :
+    def __init__ (self,vocab_size : int ,embed_dim: int ,drop_rate : float,
+                  num_depth : int,maxpos : int,mode : Literal['Encoder','Decoder'] = 'Encoder') :
+        super().__init__()
+        if mode not in ['Encoder','Decoder'] :
+            raise ValueError(f"{mode} not supported")
+        self.embedding = la.Embedding(vocab_size,embed_dim)
+        self.pos_learn = la.Embedding(maxpos,embed_dim)
+        if mode == 'Encoder':
+            self.block = la.Sequential([
+                MultiQATTNBlock(embed_dim,drop_rate,use_causalmask=False) for _ in range(num_depth) 
+            ]) 
+        else :
+            self.block = la.Sequential([
+                MultiQATTNBlock(embed_dim,drop_rate,use_causalmask=True) for _ in range(num_depth) 
+            ]) 
+        
+        self.scale = embed_dim ** 0.5 
+    
+    def forwardpass (self,x) :
+        _,S = x.shape
+        x = self.embedding(x)
+        x = x * self.scale
+        pos = ll.arange(0,S,device=x.device)
+        pos = self.pos_learn(pos)
+        pos = ll.unsquezze(pos,axis=0)
+        x = x + pos 
+        x = self.block(x)
+
+        return x 
+
+class TalkingHeadBlock (la.Component) :
+    def __init__(self,embed_dim,drop_rate,use_causalmask) :
+        super().__init__()
+        num_head =embed_dim // 64 
+        if embed_dim < 64 :
+            num_head = 2 
+        self.attention  = la.TalkingHeadAttention(
+            embed_dim=embed_dim,num_heads=num_head,
+            use_causalmask=use_causalmask
+        )
+        self.dropout1 = la.Dropout(drop_rate)
+        self.dropout2 = la.Dropout(drop_rate)
+        self.norm1 = la.RMSNorm(embed_dim)
+        self.norm2 = la.RMSNorm(embed_dim)
+        self.ffn = la.FeedForwardNetwork(
+            embed_dim,embed_dim*4
+        )
+    
+    def forwardpass(self,x) :
+        norm = self.norm1(x)
+        attn = self.attention(norm,norm,norm)
+        attn = self.dropout1(attn)
+        x = x + attn 
+
+        norm = self.norm2(x)
+        ffn = self.ffn(norm)
+        ffn = self.dropout2(ffn)
+
+        x = x + ffn 
+
+        return x 
+
+class TalkingHeadAttentionTransformers (la.Component) :
+    def __init__ (self,vocab_size : int ,embed_dim : int ,num_depth : int,
+                  drop_rate : float,maxpos : int,mode : Literal['Encoder','Decoder'] = 'Encoder') :
+        super().__init__()
+        if mode not in ['Encoder','Decoder'] :
+            raise ValueError(f"{mode} is not supported")
+        
+        self.embedding = la.Embedding(vocab_size,embed_dim)
+        self.pos_learn = la.Embedding(maxpos,embed_dim)
+
+        if mode == 'Encoder' :
+            self.block = la.Sequential([
+                TalkingHeadBlock(embed_dim,drop_rate,use_causalmask=False) for _ in range(num_depth)
+            ])
+        else :
+            self.block = la.Sequential([
+                TalkingHeadBlock(embed_dim,drop_rate,use_causalmask=True) for _ in range(num_depth)
+            ])
+        
+        self.scale = embed_dim ** 0.5
+    
+    def forwardpass(self,x) :
+        _,S = x.shape 
+        x = self.embedding(x)
+        x = x * self.scale
+        pos = ll.arange(0,S,device=x.device)
+        pos = self.pos_learn(pos)
+        pos = ll.unsquezze(pos,axis=0)
+        x = x + pos 
+        x = self.block(x)
+        return x 
+
