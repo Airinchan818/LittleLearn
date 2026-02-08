@@ -243,3 +243,45 @@ class Lion (Optimizer) :
         
         self.m = new_m
 
+class AdaBelief (Optimizer) :
+    def __init__ (self,param : list, lr : float = 1e-3,
+                  beta=(0.9,0.999),epsilon=1e-6,clip_norm:float=0.0) :
+        for p in param :
+            if not isinstance(p,Parameter) :
+                raise TypeError("All elements in params must be Parameter objects")
+        super().__init__()
+        self.lr = lr 
+        self.model_param = param 
+        self.m = [jnp.zeros_like(p.tensor) for p in param]
+        self.s = [jnp.zeros_like(p.tensor) for p in param]
+        self.beta1 = beta[0]
+        self.beta2 = beta[1]
+        self.eps = epsilon
+        self.clip_norm = clip_norm
+    
+    def step(self):
+        new_m = []
+        new_s = []
+        for i,param in enumerate(self.model_param) :
+            g = param.grad
+            if g is None :
+                new_m.append(self.m[i])
+                new_s.append(self.s[i])
+                continue
+            if self.clip_norm > 0.0 :
+                norm = jnp.linalg.norm(g)
+                if norm > self.clip_norm :
+                    g = g * (self.clip_norm / norm)
+            m = self.beta1 * self.m[i] + (1 - self.beta1 ) * g 
+            s = self.beta2 * self.s[i] + (1 - self.beta2) * ((g - m) * (g-m))
+            new_m.append(m)
+            new_s.append(s)
+            m = m / (1 - (self.beta1 ** (self.iterator + 1)))  
+            s = s / (1 - (self.beta2 ** (self.iterator + 1)))
+            update = self.lr * (m / jnp.sqrt(s + self.eps))
+            param.tensor = param.tensor - update 
+        self.m = new_m
+        self.s = new_s
+        self.iterator +=1 
+
+

@@ -1014,10 +1014,10 @@ class ResiduralGating (Component) :
         )
         self.sigmoid = ac.Sigmoid()
     
-    def forwardpass (self,x) :
+    def forwardpass (self,x,factor) :
         gate = ll.matmul(x,self.w) 
         gate = self.sigmoid(gate)
-        return x * gate 
+        return x * gate  + factor 
 
 class LinearAttention (Component) :
     def __init__ (self,epsilon=1e-6) :
@@ -1166,3 +1166,88 @@ class TalkingHeadAttention(Component):
         if self.return_attention:
             return out, attn
         return out
+
+class ReRandom(Component) :
+    def __init__(self,embed_dim : int,init_value=1e-4) :
+        super().__init__()
+        self.alpha = Parameter(
+            ll.randn(shape=(embed_dim,) * init_value)
+        )
+    
+    def forwardpass(self,x,factor) :
+        return x + self.alpha * factor
+
+
+class LogitMixingAttention (Component) :
+    def __init__ (self,
+    embed_dim,return_attention =False,bias=False,
+    use_causal_mask = False,mode:Literal['kfactor','scaled']='kfactor',
+    alpha_init=1e-4) :
+        super().__init__()
+        self.use_causal_mask = use_causal_mask
+        self.alpha = Parameter(
+            ll.randn(shape=(1,1,embed_dim)) * alpha_init
+        )
+        std = math.sqrt(6/(embed_dim * 2))
+        self.wg = Parameter(
+            tensor = uniform(
+                low=-std,high=std,shape=(embed_dim,embed_dim),
+                max_random_seed=100
+            )
+        )
+        self.wo =Parameter(
+            tensor = uniform(
+                low=-std,high=std,shape=(embed_dim,embed_dim),
+                max_random_seed=100
+            )
+        )
+        self.return_attention = return_attention
+        self.bias = bias 
+        if self.bias :
+            self.bg = Parameter(
+                tensor=zeros(shape=(1,embed_dim))
+            )
+            self.bo = Parameter(
+                tensor=zeros(shape=(1,embed_dim))
+            ) 
+        self.mode = mode 
+    
+    def kfactor (self,Q,K,V) :
+        B,S,D = Q.shape 
+        state = Q + (self.alpha * K ) / K.shape[-1]**0.5 
+        V = ll.matmul(V,self.wg)
+        score = ac.softmax(state,axis=-1,keepdims=True,use_crossentropy=False)
+        out = (score * V ) + V 
+        out = ll.matmul(out,self.wo)
+        return out,score 
+    
+    def __create_causal_mask (self,size,device) :
+        return 1 - ll.tril(ones(shape=(size,size)),diagonal=0,device=device)
+
+    def scaled (self,Q,K,V) : 
+        B,S,D = Q.shape 
+        lm = Q + (self.alpha * (K + V))
+        lm = ll.matmul(lm,self.wg)
+        score = ll.matmul(lm,K,transpose_b=True)// K.shape[-1] **0.5 
+        if self.use_causal_mask :
+            mask = self.__create_causal_mask(size=S,device=Q.device) * -1e9
+            score = score + mask
+        
+        score = ac.softmax(score,axis=-1,keepdims=True,use_crossentropy=False)
+        out = ll.matmul(score,V)
+        out = ll.matmul(out,self.wo)
+        return out,score
+
+    def forwardpass(self,Q,K,V) :
+        if self.mode == 'kfactor' :
+            out,attn = self.kfactor(Q,K,V)
+        elif self.mode == 'scaled' :
+            out,attn = self.scaled(Q,K,V)
+        else :
+            raise ValueError(f"{self.mode} not supported")
+        
+        if self.return_attention :
+            return out,attn
+        else :
+            return out
+

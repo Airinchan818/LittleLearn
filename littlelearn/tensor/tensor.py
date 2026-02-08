@@ -14,6 +14,7 @@ int16  = jnp.int16
 bool    = jnp.bool_
 
 
+
 def _get_device(device: Literal["cpu", "gpu"]):
     if device == "cpu":
         return jax.devices("cpu")[0]
@@ -55,10 +56,12 @@ class Tensor:
         return self
 
     def __repr__(self):
+         
         return (
             f"Tensor(shape={self.tensor.shape}, dtype={self.dtype}, "
             f"device={self.device}, requires_grad={self.requires_grad})\n"
-            f"{self.tensor}"
+            f"{self.tensor}\n"
+            f"Backwardpass class : {self.node.backward.__class__.__name__ if self.node else None}"
         )
 
     @property
@@ -405,4 +408,13 @@ def normal(mean :float = 0.0, std = 1.0,shape : tuple = ()
     data = mean + std * data 
     return Tensor(data=data,dtype=dtype,device=device,
                   requires_grad=requires_grad) 
+
+def entropy (probabilities ,axis = -1,epsilon=1e-6) :
+    if not isinstance (probabilities,Tensor) :
+        probabilities = Tensor(probabilities)
+    if probabilities.requires_grad :
+        probabilities.nonactive_grad()
+    return - (probabilities * (probabilities + epsilon).log()).sum(axis=axis)
+
+
 

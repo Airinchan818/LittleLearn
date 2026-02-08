@@ -384,7 +384,7 @@ class BlockLinearAttn (la.Component) :
         return x 
     
 
-class LinearAttentionEncoder (la.Componen):
+class LinearAttentionEncoder (la.Component):
     def __init__ (self,vocab_size : int ,embed_dim : int ,drop_rate : float,num_depth:int,
                   maxpos : int,epsilon : float) :
         super().__init__()

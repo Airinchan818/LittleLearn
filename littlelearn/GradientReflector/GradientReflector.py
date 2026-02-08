@@ -344,7 +344,7 @@ class DivBackward:
 
         if a.requires_grad:
             a_grad = adjust_shape(node.grad, a.shape)
-            node.grad = node.grad + (jnp.ones_like(a.tensor) / b.tensor) * a_grad
+            self.a.node.grad = node.grad + (jnp.ones_like(a.tensor) / b.tensor) * a_grad
 
         if self.b.requires_grad:
             b_grad = adjust_shape(node.grad, self.b.shape)
