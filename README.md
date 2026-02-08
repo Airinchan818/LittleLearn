@@ -1,6 +1,6 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.1.2) date : (4-January-2026): 
+update Version (1.1.4) date : (8-February-2026): 
 
     - add new layers Logits Mixing Attention
     - DivBackward bug fixed 
@@ -96,5 +96,6 @@ suport this project : https://ko-fi.com/alpin92578
 Candra Alpin Gunawan
 📧 hinamatsuriairin@gmail.com
 🌐 GitHub https://github.com/Airinchan818/LittleLearn
+
 
 youtube : https://youtube.com/@hinamatsuriairin4596?si=KrBtOhXoVYnbBlpY
