@@ -2,9 +2,9 @@
 
 update Version (1.1.2) date : (4-January-2026): 
 
-    - add new Model LinearAttentionEncoder
-    - add new Model MultiQueryAttentionTransformers
-    - add new Model TalkingHeadAttentionTransformers
+    - add new layers Logits Mixing Attention
+    - DivBackward bug fixed 
+    - add new optimizers AdaBelief 
 
 
 warning : on this update we remove so many feature because paradims changed.      
