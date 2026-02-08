@@ -211,9 +211,9 @@ class LSTM_Model (la.Component) :
         self.embedding = la.Embedding(vocab_size,lstm_dim)
         self.lstm = la.LSTM(lstm_dim)
         self.seq = la.Sequential([
-            MLPBlock(lstm_dim *2 ) for _ in range(num_depth)
+            MLPBlock(lstm_dim ) for _ in range(num_depth)
         ])
-        self.fl = la.Linear(lstm_dim * 2,n_class)
+        self.fl = la.Linear(lstm_dim,n_class)
         self.pooling = la.GlobalAveragePooling1D()
     
     def forwardpass(self,x) :
