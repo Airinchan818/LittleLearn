@@ -7,42 +7,6 @@ import re
 from PIL import Image
 import os
 
-def PositionalEncodingSinusoidal (maxpos,d_model) :
-
-    """
-    positional Encoding for Transformers Model, Transformers Model need a spisifik position sequence information
-    but we know if position learn by embedding layers will make training need more computer source for look a best 
-    position. \n
-    PositionalEncodingSinusoidal can create static signal position. and then cause its not layers so not need to train. 
-    make train to be light , and saving computer resource. \n
-
-    How to Use : \n
-    from LittleLearn.preprocessing import PositionalEncodingSinusoidal \n
-    import LittleLearn as ll
-
-    positional = PositionalEncodingSinusoidal(100,32)
-
-    positional = ll.convert_to_tensor(positional)
-
-    """
-
-    try:
-        if maxpos == 0 or maxpos is None :
-            raise ValueError(f"maxpos == {maxpos} ")
-        elif d_model == 0 or d_model is None :
-            raise ValueError(f"d_model == {d_model}")
-        positional = np.arange(maxpos,dtype=np.float32) [:,np.newaxis]
-        dimention = np.arange(d_model,dtype=np.float32)
-        div_values = np.power(10000.0,(2 * (dimention//2) / np.sqrt(d_model)))
-        angle_rads = positional / div_values
-        angle_rads[:,0::2] = np.sin(angle_rads[:,0::2])
-        angle_rads[:,1::2] = np.cos(angle_rads[:,1::2])
-        return angle_rads
-    except Exception as e :
-        e.add_note("maxpos variable must initialization first == (PositonalEncoding(maxpos=your initialization values))")
-        e.add_note("d_models variable must initialization firt == (PositionalEncoding(d_model=your dimention model values))")
-        traceback.print_exception(type(e),e,e.__traceback__)
-        raise 
 
 class MinMaxScaller :
 

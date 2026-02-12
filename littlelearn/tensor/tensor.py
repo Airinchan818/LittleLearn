@@ -303,11 +303,32 @@ class Tensor:
 
 def randn(shape : tuple,dtype = float32,device : Literal["cpu","gpu"] = "cpu",requires_grad = False,
           max_random_seed = 10 ) -> Tensor :
+    """
+    rand:
+    ---------
+        Returns a tensor with normally distributed random values.
+    parameters:
+    -----------
+        shape (tuple): Shape of the tensor to be created.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+        max_random_seed (int): Maximum value for random seed generation. Default is 10.
+    """
     random_seed = random.randint(0,max_random_seed)
     data = jax.random.normal(jax.random.PRNGKey(random_seed),shape).astype(dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def rand (*args : int) -> Tensor :
+    """
+    rand:
+    ---------
+        Returns a tensor with uniformly distributed random values in the range [0, 1).
+    parameters:
+    -----------
+        *args (int): Dimensions of the tensor to be created.
+    """
+
     random_seed = random.randint(0,100)
     data = jax.random.uniform(jax.random.PRNGKey(random_seed),shape=args)
     return Tensor(data)
@@ -315,6 +336,20 @@ def rand (*args : int) -> Tensor :
 def uniform (low : float = -1.0,high : float = 1.0, shape : tuple = (), 
              dtype=float32,device : Literal["cpu","gpu"]="cpu", max_random_seed = 10,
              requires_grad = False) :
+    """
+    uniform:
+    ---------
+        Returns a tensor with uniformly distributed random values in the specified range [low, high).
+    parameters:
+    -----------
+        low (float): Lower bound of the uniform distribution. Default is -1.0.
+        high (float): Upper bound of the uniform distribution. Default is 1.0.
+        shape (tuple): Shape of the tensor to be created. Default is ().
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        max_random_seed (int): Maximum value for random seed generation. Default is 10.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     random_keys = random.randint(0,max_random_seed) 
     data = jax.random.uniform(
         key=jax.random.PRNGKey(random_keys),shape=shape,dtype=dtype,
@@ -323,56 +358,194 @@ def uniform (low : float = -1.0,high : float = 1.0, shape : tuple = (),
     return Tensor(data,device=device,requires_grad=requires_grad)
 
 def zeros(shape : tuple,dtype=float32,device : Literal["cpu","gpu"] = "cpu",requires_grad = False) -> Tensor :
+    """
+        zeros:
+        ---------
+            Returns a tensor filled with zeros.
+        parameters:
+        -----------
+            shape (tuple): Shape of the tensor to be created.
+            dtype: Data type of the tensor. Default is float32.
+            device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+            requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.zeros(shape,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def ones(shape : tuple,dtype=float32,device : Literal["cpu","gpu"] = "cpu",requires_grad = False) -> Tensor :
+    """
+        ones:
+        -------
+            Returns a tensor filled with ones.
+        parameters:
+        -----------
+            shape (tuple): Shape of the tensor to be created.
+            dtype: Data type of the tensor. Default is float32.
+            device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+            requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.ones(shape,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def arange (start : int, end : int, step : int =1 , dtype = int32, device : Literal["cpu","gpu"] ="cpu", requires_grad = False) -> Tensor :
+    """
+    arange:
+    ---------
+        Returns a tensor with evenly spaced values within a given interval.
+    parameters:
+    -----------
+        start (int): Start of the interval.
+        end (int): End of the interval.
+        step (int): Spacing between values. Default is 1.
+        dtype: Data type of the tensor. Default is int32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.arange(start,end,step,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def eye (n : int, dtype = float32, device : Literal["cpu","gpu"] ="cpu", requires_grad = False) -> Tensor :
+    """
+    eye:
+    ---------
+        Returns a 2-D tensor with ones on the diagonal and zeros elsewhere. 
+    parameters:
+    -----------
+        n (int): Number of rows and columns of the square tensor.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.eye(n,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def arange_like (tensor : Tensor, start : int, end : int, step : int =1 , dtype = int32, device : Literal["cpu","gpu"] ="cpu", requires_grad = False) -> Tensor :
+    """
+        arange_like
+        ---------
+            Returns a tensor with evenly spaced values within a given interval, shaped like the input tensor.
+        parameters:
+        -----------
+            tensor (Tensor): Input tensor to match the shape.
+            start (int): Start of the interval.
+            end (int): End of the interval.
+            step (int): Spacing between values. Default is 1.
+            dtype: Data type of the tensor. Default is int32.
+            device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+            requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.arange(start,end,step,dtype=dtype)
     data = data.reshape(tensor.shape)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def eye_like (tensor : Tensor, dtype = float32, device : Literal["cpu","gpu"] ="cpu", requires_grad = False) -> Tensor :
+    """
+        eye_like:
+        ---------
+            Returns a 2-D tensor with ones on the diagonal and zeros elsewhere, shaped like the input tensor.
+        parameters:
+        -----------
+            tensor (Tensor): Input tensor to match the shape.
+            dtype: Data type of the tensor. Default is float32.
+            device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+            requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+
+    """
     n = tensor.shape[0]
     data = jnp.eye(n,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def randn_like (tensor : Tensor,dtype = float32,device : Literal["cpu","gpu"] = "cpu",requires_grad = False) -> Tensor :
+    """
+    randn_like:
+    ---------
+        Returns a tensor with normally distributed random values, shaped like the input tensor.
+    parameters:
+    -----------
+        tensor (Tensor): Input tensor to match the shape.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jax.random.normal(jax.random.PRNGKey(random.randint(0,100)),
                              tensor.shape)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def rand_like (tensor : Tensor) -> Tensor :
+    """
+    rand_like:
+    ---------
+        Returns a tensor with uniformly distributed random values in the range [0, 1), shaped like the input tensor.
+    parameters:
+    -----------
+        tensor (Tensor): Input tensor to match the shape.
+    """
     data = jax.random.uniform(jax.random.PRNGKey(random.randint(0,100)),shape=tensor.shape)
     return Tensor(data)
 
 def zeros_like (tensor : Tensor,dtype=float32,device : Literal["cpu","gpu"] = "cpu",requires_grad = False) -> Tensor :
+    """
+    zeros_like:
+    ---------
+        Returns a tensor filled with zeros, shaped like the input tensor.
+    parameters:
+    -----------
+        tensor (Tensor): Input tensor to match the shape.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.zeros(tensor.shape,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def ones_like (tensor : Tensor,dtype=float32,device : Literal["cpu","gpu"] = "cpu",requires_grad = False) -> Tensor :
+    """
+    ones_like:
+    ---------
+        Returns a tensor filled with ones, shaped like the input tensor.
+    parameters:
+    -----------
+        tensor (Tensor): Input tensor to match the shape.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.ones(tensor.shape,dtype=dtype)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 def tril (tensor : Tensor,diagonal=0,dtype=float32,device : Literal["cpu","gpu"]="cpu",
           requires_grad = False) -> Tensor:
+    """
+    tril:
+    ---------
+
+        Returns the lower triangular part of a tensor, zeroing out elements above the specified diagonal.
+    parameters:
+    -----------
+        tensor (Tensor): Input tensor.
+        diagonal (int): Diagonal above which to zero elements. Default is 0.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     data = jnp.tril(tensor.tensor,k=diagonal)
     return Tensor(data,dtype=dtype,device=device,requires_grad=requires_grad)
 
 
 def binomial (n :float , p : float , shape : tuple ,max_random_keys = 10,
               device = "cpu") :
+    """
+    binomial:
+    ---------
+        Returns a tensor with random values drawn from a binomial distribution.
+    parameters:
+    -----------
+        n (float): Number of trials.
+        p (float): Probability of success on each trial.
+        shape (tuple): Shape of the tensor to be created.
+        max_random_keys (int): Maximum value for random seed generation. Default is 10.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+    """
     max_random = random.randint(0,max_random_keys)
     data = jax.random.binomial(
         key=jax.random.PRNGKey(max_random),n=n,p=p,shape=shape
@@ -380,17 +553,49 @@ def binomial (n :float , p : float , shape : tuple ,max_random_keys = 10,
     return Tensor(data=data,device=device)
 
 def top_k (logits : Tensor,top_k = 1) :
+    """
+    top_k:
+    ---------
+        Returns the top k highest values and their indices from the input tensor.
+    parameters:
+    -----------
+        logits (Tensor): Input tensor from which to extract top k values.
+        top_k (int): Number of top elements to retrieve. Default is 1.
+
+    """
     prob,index = jax.lax.top_k(logits.tensor,top_k)
     return Tensor(prob),Tensor(index,dtype=int32)
 
 
 def categorical (logits : Tensor,max_random_seed = 10,axis=-1) :
+    """
+    categorical:
+    ---------
+        Returns a tensor with random values drawn from a categorical distribution defined by the input logits.
+    parameters:
+    -----------
+        logits (Tensor): Input tensor representing the logits for the categorical distribution.
+        max_random_seed (int): Maximum value for random seed generation. Default is 10.
+        axis (int): Axis along which to sample. Default is -1.
+    """
     keys = jax.random.PRNGKey(random.randint(0,max_random_seed))
     categori = jax.random.categorical(key=keys,logits=logits.tensor,axis=axis)
     return Tensor(categori)
 
 def orthogonal (size : int = 1,dtype=float32,device : Literal["cpu","gpu"]="cpu", max_random_seed = 10,
              requires_grad = False) :
+    """
+    orthogonal:
+    ---------
+        Returns a square orthogonal tensor of the specified size.
+    Parameters:
+    -----------
+        size (int): Size of the square tensor to be created. Default is 1.
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        max_random_seed (int): Maximum value for random seed generation. Default is 10.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.    
+    """
     keys= jax.random.PRNGKey(random.randint(0,max_random_seed))
     logits = jax.random.normal(keys,shape=(size,size))
     Q,R = jnp.linalg.qr(logits)
@@ -403,6 +608,20 @@ def orthogonal (size : int = 1,dtype=float32,device : Literal["cpu","gpu"]="cpu"
 def normal(mean :float = 0.0, std = 1.0,shape : tuple = ()
            ,dtype=float32,device : Literal["cpu","gpu"]="cpu", max_random_seed = 10,
              requires_grad = False) :
+    """
+    normal:
+    ---------
+        Returns a tensor with normally distributed random values with specified mean and standard deviation.
+    parameters:
+    -----------
+        mean (float): Mean of the normal distribution. Default is 0.0.
+        std (float): Standard deviation of the normal distribution. Default is 1.0.
+        shape (tuple): Shape of the tensor to be created. Default is ().
+        dtype: Data type of the tensor. Default is float32.
+        device (str): Device to store the tensor ('cpu' or 'gpu'). Default is 'cpu'.
+        max_random_seed (int): Maximum value for random seed generation. Default is 10.
+        requires_grad (bool): If True, gradients will be computed for this tensor. Default is False.
+    """
     keys = jax.random.PRNGKey(random.randint(0,max_random_seed))
     data = jax.random.normal(keys,shape=shape)
     data = mean + std * data 
@@ -410,6 +629,16 @@ def normal(mean :float = 0.0, std = 1.0,shape : tuple = ()
                   requires_grad=requires_grad) 
 
 def entropy (probabilities ,axis = -1,epsilon=1e-6) :
+    """
+    entropy:
+    ---------
+        Computes the entropy of a probability distribution.
+    parameters:
+    -----------
+        probabilities (Tensor or array-like): Input tensor representing the probability distribution.
+        axis (int): Axis along which to compute the entropy. Default is -1.
+        epsilon (float): Small value to avoid log(0). Default is 1e-6.
+    """
     if not isinstance (probabilities,Tensor) :
         probabilities = Tensor(probabilities)
     if probabilities.requires_grad :

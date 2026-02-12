@@ -60,7 +60,7 @@ class Trainer :
 
 
     
-    def run (self,batch_size = 32,epochs = 1, verbose : Literal[0,1] = 0,shuffle : bool = False,
+    def run (self,batch_size = 32,epochs = 1, verbose : Literal[0,1] = 0,
             device = "cpu",dtype=(ll.float32,ll.float32)) :
         """
             run Trainer for training model, use this function for training model with 
@@ -76,17 +76,13 @@ class Trainer :
                 verbose : Literal [0,1] default = 0 
                     for showing mean total_loss per epoch
                 
-                shuffle : bool default = False 
-                    for shuffling datasets while training run
+
+                    
                 
                 device : str default = "cou" 
                     datasets device, warning : datasets must 
                     converted to Tensor and in the same device 
                     with model
-                
-            output:
-            trained model : Component
-
 
 
         """
@@ -98,7 +94,6 @@ class Trainer :
         
         from tqdm import tqdm 
         self.__loader.batch_size = batch_size
-        self.__loader.shuffle = shuffle
         for epoch in range(epochs) :
             total_loss = 0 
             iterator = tqdm(self.__loader)
@@ -186,9 +181,9 @@ class RNN_Model (la.Component) :
         self.embedding = la.Embedding(vocab_size,rnn_dim)
         self.rnn = la.SimpleRNN(rnn_dim,return_sequence=True)
         self.seq  = la.Sequential(
-           [ MLPBlock(rnn_dim*2) for _ in range(num_depth)]
+           [ MLPBlock(rnn_dim) for _ in range(num_depth)]
         )
-        self.fl = la.Linear(rnn_dim*2,n_class)
+        self.fl = la.Linear(rnn_dim,n_class)
         self.pooling = la.GlobalAveragePooling1D()
     
     def forwardpass(self,x) :

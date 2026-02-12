@@ -5,7 +5,7 @@
      
 """
 
-from .preprocessing import PositionalEncodingSinusoidal
+
 from .preprocessing import MinMaxScaller
 from .preprocessing import MaxAbsoluteScaller 
 from .preprocessing import StandardScaller

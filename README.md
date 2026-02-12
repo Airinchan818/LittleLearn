@@ -1,10 +1,10 @@
 # 🌱 LittleLearn – Touch the Big World with Little Steps
 
-update Version (1.1.4) date : (8-February-2026): 
+update Version (1.2.1) date : (12-February-2026): 
 
-    - add new layers Logits Mixing Attention
-    - DivBackward bug fixed 
-    - add new optimizers AdaBelief 
+    - add Doc String  
+    - add new Optimizer NAdam,SGD,Adagrad and Momentum
+    
 
 
 warning : on this update we remove so many feature because paradims changed.      

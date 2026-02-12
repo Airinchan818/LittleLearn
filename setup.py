@@ -2,7 +2,7 @@ from setuptools import setup ,find_packages
 
 setup(
     name='littlelearn',
-    version='0.1',
+    version='1.2.1',
     description='machine learning ecosystem',
     long_description=open("README.md", encoding="utf-8").read(),
     author='Candra Alpin Gunawan',
@@ -10,14 +10,14 @@ setup(
     url='https://github.com/Airinchan818/LittleLearn',
     packages=find_packages(),
     install_requires=[
+        'jax',
+        'pandas',
         'numpy',
-        'numba',
-        'matplotlib',
-        'networkx'
+        'PIL'
     ],
     long_description_content_type='text/markdown',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',

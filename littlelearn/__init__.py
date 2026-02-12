@@ -541,66 +541,112 @@ def broadcast_to (a,shape :tuple) :
     return a.broadcast_to(shape)
 
 def erf (a) :
+    """
+    Compute the error function of each element in the Tensor.
+    Parameters:
+    -----------
+    a : Tensor or array-like
+        Input Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.erf()
 
 def sinh (a) :
+    """
+    Compute the hyperbolic sine of each element in the Tensor.
+    Parameters:
+    -----------
+    a : Tensor or array-like
+        Input Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.sinh()
 
 def consh (a) :
+    """
+    Compute the hyperbolic cosine of each element in the Tensor.
+
+    Parameters:
+    -----------
+        a: Tensor or array-like
+        Input Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.cosh()
 
 def tan (a) :
+    """
+    Compute the tangent of each element in the Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.tan()
 
 def floor (a) : 
+    """
+    Compute the floor of each element in the Tensor. 
+    """
     if not isinstance(a,Tensor) : 
         a = Tensor(a)
     
     return a.floor()
 
 def ceil (a) :
+    """
+    Compute the ceiling of each element in the Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.ceil()
 
 def rint (a) :
+    """
+    Round each element in the Tensor to the nearest integer.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.rint()
 
 def reciprocal (a) :
+    """
+    Compute the reciprocal of each element in the Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.reciprocal()
 
 def sign (a) :
+    """
+    Compute the sign of each element in the Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.sign()
 
 def identity (a) :
+    """
+    Return the input Tensor unchanged.
+    """
     if not isinstance(a,Tensor) : 
         a = Tensor(a)
     
     return a.identity()
 
 def concat (tensor_list : list,axis=0) :
+    """
+    Concatenate a list of Tensors along a specified axis.
+    """
     if not isinstance(tensor_list[0],Tensor) :
         for i in range(len(tensor_list)) :
             tensor_list[i] = Tensor(tensor_list[i])
@@ -608,12 +654,19 @@ def concat (tensor_list : list,axis=0) :
     return GradientReflector.concat(tensor_list,axis=axis)
 
 def logsumexp (a,axis = None,keepdims=False) :
+    """
+    Compute the log of the sum of exponentials of elements in the Tensor along a specified axis.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     
     return a.logsumexp(axis=axis,keepdims=keepdims)
 
 def logaddexp (a,b) :
+    """
+    Compute the log of the sum of exponentials of two Tensors element-wise.
+    """
+
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     if not isinstance(a,Tensor) :
@@ -622,19 +675,31 @@ def logaddexp (a,b) :
     return a.logaddexp(a,b)
 
 def argmin (a,axis=None) :
+    """
+    Compute the indices of the minimum values along a specified axis of the input Tensor.
+    """
     if not isinstance(a,Tensor) :
         a = Tensor(a)
     return a.argmin(axis=axis)
 
 def where (condition,a,b) :
+   """
+    Select elements from two Tensors based on a condition.
+   """
    return GradientReflector.where(condition=condition,a=a,b=b)
 
 def sin(x) :
+    """
+    Compute the sine of each element in the Tensor.
+    """
     if not isinstance(x,Tensor) : 
         x = Tensor(x)
     return x.sin()
 
 def cos(x) :
+    """
+    Compute the cosine of each element in the Tensor.
+    """
     if not isinstance(x,Tensor) :
         x = Tensor(x)
     

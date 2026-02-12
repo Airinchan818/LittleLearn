@@ -7,6 +7,21 @@ import numpy as np
 import math 
 
 class Parameter(Tensor):
+    """
+    Parameter:
+    --------------
+    a trainable for  layers or custom layers, use it when your need a some Trainable Tensor 
+    
+    param:
+    ----------------
+        tensor:
+            numeric data tensor/numpy from jax / or another numerical data 
+        
+        dtype:
+            spisific data type
+    """
+
+
     def __init__(self, tensor, dtype=float32):
         
         if isinstance(tensor, Tensor):
@@ -42,16 +57,13 @@ class Component :
             ```
                 class MLP(Component):
                     def __init__ (self,num_class):
-                        super().__init__()
-                        self.layers1 = Dense(32,'relu')
-                        self.layers2 = Dense(64,'relu')
-                        self.final_out = Dense(num_class)
+                      super().__init__()
+                      self.layers = Linear(32,64)
+                      self.layers2 = Lineaer(64,1)
                     
-                    def __call__(self,**kwargs):
-    
-                        x = self.layers1(x)
-                        x = self.layers2(x)
-                        x = self.layers3(x)
+                    def forwardpass(self,x) :
+                    x = self.layers(x)
+                    return self.layers2(x)
             ```
         
         Author:
@@ -145,6 +157,22 @@ class Component :
 
  
 class Linear (Component) :
+    """
+    Linear
+    ----------------
+    is a Linear layers , working by dot product matmul operation with simple 
+    formulation:
+        x = (input . W ) + B 
+    
+    param:
+    --------------
+        input_dim (int): dimention of input 
+        output_dim (int): dimention of output 
+        add_bias (bool): whether to add bias or not
+        dtype : spisific data type
+    
+    """
+
 
     def __init__ (self,input_dim,output_dim,add_bias=True,dtype=float32) :
         super().__init__()
@@ -167,6 +195,16 @@ class Linear (Component) :
         return ll.matmul(x,self.weight)
     
 class Embedding (Component) :
+    """
+    Embedding:
+    --------------
+    is layers for word embedding or token embedding
+    param:
+        vocab_size (int) : size of vocabulary 
+        embedding_dim (int) : dimention of embedding
+
+    """
+
     def __init__(self,vocab_size : int , embedding_dim : int) :
         super().__init__()
         self.weight = Parameter(tensor=rand(vocab_size,embedding_dim))
@@ -178,6 +216,17 @@ class Embedding (Component) :
         return self.weight[x]
 
 class GlobalAveragePooling1D (Component) :
+    """
+    GlobalAveragePooling1D
+    ----------------------
+    does a global average pooling operation for 1D data
+
+    param:
+    -------------
+        axis (int) : axis to pooling operation
+        keepdims (bool) : whether to keep dimension or not
+    """
+
     def __init__(self,axis=1,keepdims=False):
         super().__init__() 
         self.axis = axis 
@@ -190,6 +239,18 @@ class GlobalAveragePooling1D (Component) :
 
 
 class Attention (Component) :
+    """
+        Attention:
+        --------------
+        is single head attention layers implementation with scaled dot product attention
+        
+        param:
+        --------------
+            embed_dim (int) : dimention of embedding 
+            add_bias (bool) : whether to add bias or not
+            return_attention (bool) : whether to return attention score or not
+            use_causal_mask (bool) : whether to use causal mask or not
+    """
     def __init__ (self,embed_dim : int,add_bias : bool = False, return_attention = False ,use_causal_mask = False):
         super().__init__()
         std = math.sqrt(6/(embed_dim * 2 ))
@@ -247,6 +308,16 @@ class Attention (Component) :
 
 
 class RMSNorm (Component) :
+    """
+    RMSNorm:
+    --------------
+    is Root Mean Square Normalization layers implementation
+
+    param:
+    ---------
+        embed_dim (int) : dimention of embedding
+        epsilon (float) : small value to avoid zero division
+    """
     def __init__ (self,embed_dim : int,epsilon = 1e-6) :
         super().__init__()
         self.weight = Parameter(tensor=ones(shape=(1,embed_dim)))
@@ -258,6 +329,15 @@ class RMSNorm (Component) :
         return rms_x * self.weight
 
 class Dropout(Component) :
+    """
+    Dropout:
+    --------------
+    is Dropout layers implementation
+
+    param:
+    -----------
+        rate (float) : dropout rate
+    """
     def __init__(self,rate :float = 0.1) :
         super().__init__()
         self.rate = rate 
@@ -269,6 +349,15 @@ class Dropout(Component) :
         return x 
 
 class LayerNorm (Component) :
+    """
+    LayerNorm:
+    --------------
+    is Layer Normalization layers implementation
+
+    param:
+        embed_dim (int) : dimention of embedding
+        epsilon (float) : small value to avoid zero division
+    """
     def __init__ (self,embed_dim : int, epsilon=1e-6) :
         super().__init__()
         self.embed_dim = embed_dim
@@ -284,6 +373,16 @@ class LayerNorm (Component) :
         return shifted1 / shifted2 * self.w_gamma + self.w_beta
 
 class BatchNorm (Component) :
+    """
+    BatchNorm:
+    -------------
+    is Batch Normalization layers implementation
+
+    param:
+    ---------
+        embed_dim (int) : dimention of embedding
+        epsilon (float) : small value to avoid zero division
+    """
     def __init__(self,embed_dim : int , epsilon = 1e-6) :
         super().__init__()
         self.embed_dim = embed_dim 
@@ -300,6 +399,16 @@ class BatchNorm (Component) :
 
 
 class SimpleRNN (Component) :
+    """
+    SimpleRNN:
+    --------------
+    is Simple RNN layers implementation
+    
+    param:
+    ----------
+        embed_dim (int) : dimention of embedding 
+        return_sequence (bool) : whether to return all sequence or last sequence only
+    """
     def __init__ (self,embed_dim : int,return_sequence = False ) :
         super().__init__()
         self.embed_dim = embed_dim
@@ -331,6 +440,21 @@ class SimpleRNN (Component) :
  
 
 class MultiHeadAttention (Component) :
+
+    """
+    MultiHeadAttention:
+    --------------
+    is multi head attention layers implementation with scaled dot product attention
+
+    param:
+    ------------
+        embed_dim (int) : dimention of embedding 
+        num_head (int) : number of head 
+        add_bias (bool) : whether to add bias or not
+        return_attention (bool) : whether to return attention score or not
+        use_causal_mask (bool) : whether to use causal mask or not
+    """
+
     def __init__ (self,embed_dim : int ,num_head : int =None,add_bias=False,return_attention=False,
                   use_causal_mask = False) :
         super().__init__()
@@ -442,6 +566,19 @@ class MultiHeadAttention (Component) :
             return output
         
 class LSTM (Component) :
+    """
+    LSTM:
+    --------------
+    is LSTM layers implementation
+    
+    param:
+    -------------
+        embed_dim (int) : dimention of embedding 
+        return_sequence (bool) : whether to return all sequence or last sequence only
+        return_state (bool) : whether to return hidden state and cell state
+
+    """
+    
     def __init__ (self,embed_dim : int, return_sequence = True,return_state = False) :
         super().__init__()
         std = math.sqrt(float(embed_dim))
@@ -512,6 +649,16 @@ class LSTM (Component) :
            
 
 class Sequential (Component) :
+    """
+    Sequential:
+    --------------
+    is Sequential layers implementation to combine some layers or component
+    
+    param:
+    ------------
+        component (list) : list of layers or component
+    """
+
     def __init__ (self,component : list) :
         super().__init__()
         self.__component = component
@@ -535,6 +682,23 @@ class Sequential (Component) :
         return x 
 
 class LCMBlock (Component) :
+    """
+    LCMBlock:
+    -------------- 
+    a part of special model from LCM research, this layers is compatible 
+    for any domain such as NLP,CV,audion even use it for Tabular data. 
+
+    param:
+    -----------
+        embed_dim (int) : dimention of embedding 
+        drop_rate (float) : dropout rate 
+    
+    references:
+    -----------------
+    candra alpin gunawan " LCM : A Latent-Connected MLP Architecture for Universal Deep Learning with Fast Convergence and low Computational Cost"
+    \n
+    zenodo: https://zenodo.org/records/17501400
+    """
     def __init__(self,embed_dim: int,drop_rate :float = 0.1 ) :
         super().__init__()
         self.step1 = Linear(embed_dim,embed_dim)
@@ -556,6 +720,24 @@ class LCMBlock (Component) :
         return x + laten 
 
 class LCTBlock (Component) :
+    """
+        LCTBlock:
+        ----------------
+        a part of special model from LCT research, this is a transformers block 
+        with LCM block as FFN.
+
+        param:
+        ------------
+            embed_dim (int) : dimention of embedding
+            num_head (int) : number of head
+            drop_rate (float) : dropout rate
+            use_causal_mask (bool) : whether to use causal mask or not
+        
+        refrennces:
+        candra alpin gunawan "Latent Connected Transformers: Preserving Attention Representations Beyond Feed-Forward Networks"    
+        \n 
+        zenodo: https://zenodo.org/records/17963099
+    """
     def __init__ (self,embed_dim : int ,num_head : int,drop_rate : float = 0.1,
                   use_causal_mask = False) :
         super().__init__()
@@ -578,6 +760,16 @@ class LCTBlock (Component) :
 
 
 class FeedForwardNetwork (Component) :
+    """
+    FeedForwardNetwork:
+    ---------------
+    is a simple feed forward network with 2 linear layers and gelu activation function
+
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding 
+        ffn_dim (int) : dimention of feed forward network
+    """
     def __init__(self,embed_dim : int ,ffn_dim : int):
         super().__init__()
         self.linear1 = Linear(embed_dim,ffn_dim)
@@ -592,6 +784,19 @@ class FeedForwardNetwork (Component) :
 
 
 class TransformersBlock (Component) :
+    """
+    TransformersBlock:
+    ---------------
+    is a simple transformers block with multi head attention and feed forward network
+    
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding 
+        ffn_dim (int) : dimention of feed forward network
+        drop_rate (float) : dropout rate 
+        type (str) : type of attention 'single' or 'multi'
+        mode (str) : mode of transformers block 'Encoder' or 'Decoder'
+    """
     def __init__(self,embed_dim : int,ffn_dim : int,drop_rate : float = 0.1,type : Literal ['single','multi']= 'multi',
                  mode : Literal['Encoder','Decoder'] = 'Encoder') :
         super().__init__()
@@ -634,6 +839,18 @@ class TransformersBlock (Component) :
         return x
 
 class DiagonalSSM(Component):
+    """
+    DiagonalSSM:
+    ---------------
+    is a simple state space model with diagonal state transition matrix, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding
+
+
+    """
+
     def __init__(self, embed_dim: int):
         super().__init__()
 
@@ -750,6 +967,16 @@ class Maxpool2d (Component) :
         )
 
 class SwiGLU (Component) :
+    """
+        SwiGLU:
+        ---------------
+        is a simple feed forward network with 2 linear layers and swish activation function
+
+        param:
+        ---------------
+            embed_dim (int) : dimention of embedding 
+            hidden_dim (int) : dimention of hidden layer
+    """
     def __init__ (self,embed_dim : int , hidden_dim : int) :
         super().__init__()
         std = math.sqrt(float(6/(embed_dim + hidden_dim))) 
@@ -776,6 +1003,17 @@ class SwiGLU (Component) :
         
 
 class GeGLU (Component) :
+    """
+    GeGLU:
+    ---------------
+    is a simple feed forward network with 2 linear layers and gelu activation function
+
+
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding 
+        hidden_dim (int) : dimention of hidden layer
+    """
     def __init__ (self,embed_dim,hidden_dim) :
         super().__init__()
         std = math.sqrt(float(6/(embed_dim + hidden_dim)))
@@ -801,6 +1039,16 @@ class GeGLU (Component) :
         return logits 
 
 class ReGLU (Component) :
+    """
+    ReGLU:
+    ---------------
+    is a simple feed forward network with 2 linear layers and relu activation function
+    
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding 
+        hidden_dim (int) : dimention of hidden layer
+    """
     def __init__(self,embed_dim,hidden_dim) :
         super().__init__()
         std = math.sqrt(float(6/(embed_dim + hidden_dim)))
@@ -826,6 +1074,16 @@ class ReGLU (Component) :
         return logits
 
 class ReLUSquaredGLU(Component) :
+    """
+    ReLUSquaredGLU:
+    ---------------
+    is a simple feed forward network with 2 linear layers and relu activation function but the output of relu is squared
+
+    param:
+    ---------------
+    embed_dim (int) : dimention of embedding
+    hidden_dim (int) : dimention of hidden layer
+    """
     def __init__(self,embed_dim,hidden_dim) :
         super().__init__()
         std = math.sqrt(float(6/(embed_dim + hidden_dim)))
@@ -851,6 +1109,18 @@ class ReLUSquaredGLU(Component) :
         return output
 
 class GLU (Component) :
+
+    """
+    GLU:
+    ---------------
+    is a simple feed forward network with 2 linear layers and sigmoid activation function
+
+    param:
+    ---------
+    embed_dim (int) : dimention of embedding
+    hidden_dim (int) : dimention of hidden layer
+
+    """
     def __init__(self,embed_dim,hidden_dim) :
         super().__init__()
         std = math.sqrt(float(6/(embed_dim + hidden_dim)))
@@ -876,6 +1146,19 @@ class GLU (Component) :
         return logits 
 
 class GAU (Component) :
+    """
+    Gated Attention Unit (GAU):
+    ---------------
+    is a simple attention layers with gating mechanism, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding
+        return_attention (bool) : whether to return attention score or not
+        add_bias (bool) : whether to add bias or not
+        use_causalmask (bool) : whether to use causal mask or not
+
+    """
     def __init__ (self,embed_dim,return_attention = False,add_bias = False,
                   use_causalmask = False) :
         super().__init__()
@@ -975,6 +1258,16 @@ class GAU (Component) :
             return output
 
 class LayerScale (Component) :
+    """
+    LayerScale:
+    ---------------
+    is a simple layer normalization with learnable scaling factor, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+    
+    param:
+    ---------------
+        input_dim (int) : dimention of input 
+        init_value (float) : initial value of scaling factor
+    """
     def __init__(self,input_dim,init_value=1e-5) :
         super().__init__()
         self.w = Parameter(
@@ -986,6 +1279,19 @@ class LayerScale (Component) :
     
 
 class ScaleNorm (Component) :
+    """
+    ScaleNorm:
+    ---------------
+    is a simple layer normalization with learnable scaling factor but without bias, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding 
+        epsilon (float) : small value to avoid division by zero
+
+    """
+
+
     def __init__ (self,embed_dim : int,epsilon=1e-5) :
         super().__init__()
         self.factor = Parameter(
@@ -999,18 +1305,39 @@ class ScaleNorm (Component) :
         return x * (self.factor / norm) 
     
 class ReZero (Component) :
-    def __init__(self) :
+    """
+    Rezero:
+    ---------------
+    is a simple residual connection with learnable scaling factor, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+    param:
+    -------------
+        embed_dim (int) : dimention of embedding
+
+    """
+
+
+    def __init__(self,embed_dim : int) :
         super().__init__()
-        self.alpha = Parameter(tensor=ones((1,)))
+        self.alpha = Parameter(tensor=zeros(shape=(embed_dim,)))
     
     def forwardpass(self,x,factor) :
         return x + self.alpha * factor
     
 class ResiduralGating (Component) :
+    """
+        ResidualGating:
+        ---------------
+        is a simple residual connection with learnable gating mechanism, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+        param:
+        ---------------
+            embed_dim (int) : dimention of embedding
+    """
     def __init__ (self,embed_dim : int) :
         super().__init__()
         self.w = Parameter(
-            tensor=zeros(shape=(embed_dim,embed_dim))
+            tensor=ones(shape=(embed_dim,embed_dim))
         )
         self.sigmoid = ac.Sigmoid()
     
@@ -1020,6 +1347,17 @@ class ResiduralGating (Component) :
         return x * gate  + factor 
 
 class LinearAttention (Component) :
+    """
+    LinearAttention:
+    ---------------
+    is a simple attention layers with linear complexity, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+    
+    param:
+    ---------------
+        embed_dim (int) : dimention of embedding 
+        epsilon (float) : small value to avoid division by zero
+
+    """
     def __init__ (self,epsilon=1e-6) :
         super().__init__()
         self.eps = epsilon
@@ -1042,6 +1380,20 @@ class LinearAttention (Component) :
     
     
 class MultiQueryAttention(Component):
+    """
+        MultiQueryAttention:
+        ---------------
+        is a simple multi head attention layers with shared key and value projection, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+        param:
+        ---------------
+            embed_dim (int) : dimention of embedding
+            num_head (int) : number of head
+            return_attention (bool) : whether to return attention score or not
+            use_causalmask (bool) : whether to use causal mask or not
+
+    """
+
     def __init__(self, embed_dim, num_head,
                  return_attention=False, use_causalmask=False):
         super().__init__()
@@ -1106,6 +1458,21 @@ class MultiQueryAttention(Component):
         return out
 
 class TalkingHeadAttention(Component):
+
+    """
+        TalkingHeadAttention:
+        ---------------
+        is a simple multi head attention layers with talking head mechanism, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+        param:
+        ---------------
+            embed_dim (int) : dimention of embedding
+            num_heads (int) : number of head
+            return_attention (bool) : whether to return attention score or not
+            use_causalmask (bool) : whether to use causal mask or not
+
+    """
+
     def __init__(self, embed_dim, num_heads, return_attention=False, use_causalmask=False):
         super().__init__()
         std = math.sqrt(6/(embed_dim * 2))
@@ -1168,6 +1535,15 @@ class TalkingHeadAttention(Component):
         return out
 
 class ReRandom(Component) :
+    """
+    ReRandom:
+    ---------------
+    is a simple residual connection with learnable random scaling factor, this layers is compatible for any domain such as NLP,CV,audion even use it for Tabular data.
+
+    param:
+    ------------
+    embed_dim (int) : dimention of embedding
+    """
     def __init__(self,embed_dim : int,init_value=1e-4) :
         super().__init__()
         self.alpha = Parameter(
@@ -1179,6 +1555,31 @@ class ReRandom(Component) :
 
 
 class LogitMixingAttention (Component) :
+    """
+        LogitMixingAttention:
+        --------------
+        a lightweight attention mechanism with logit mixing technique. have two special 
+        formulation mode such as kfactor and scaled.
+        this layers called as Attention because have attention effect, 
+        scaled mode is a formulation adapted from scaled dot product attention.
+        kfactor mode is original formulation from logit mixing attention.
+
+        param:
+        -------------
+            embed_dim (int) : dimention of embedding
+            return_attention (bool) : whether to return attention score or not
+            bias (bool) : whether to use bias or not
+            use_causal_mask (bool) : whether to use causal mask or not
+            mode (str) : mode of logit mixing attention, 'kfactor' or 'scaled'
+            alpha_init (float) : initial value for alpha parameter
+        
+        references:
+        -----------------
+        candra alpin gunawan "Make Attention Simpler with Logit Mixing Attention (LMA)"      
+
+        zenodo: https://zenodo.org/records/18512991
+    """
+
     def __init__ (self,
     embed_dim,return_attention =False,bias=False,
     use_causal_mask = False,mode:Literal['kfactor','scaled']='kfactor',
